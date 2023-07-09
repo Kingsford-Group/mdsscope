@@ -1,0 +1,20 @@
+include_rules
+
+export PKG_CONFIG_PATH
+
+# CXXFLAGS=-O3 -DNDEBUG -Wall -Werror -DHAVE_EXECINFO_H `pkg-config --cflags libxxhash` -pthread
+CXXFLAGS=-O0 -g -Wall -Werror -DHAVE_EXECINFO_H `pkg-config --cflags libxxhash` -pthread
+LDFLAGS=`pkg-config --libs-only-L libxxhash` -pthread
+LDLIBS=`pkg-config --libs-only-l libxxhash`
+
+CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA)
+
+# Library
+
+# Yaggo arg parsing
+: foreach *.yaggo |> !yaggo |> {args}
+
+# traverse_components
+TC_SRCS = traverse_comp_main.cc backtrace.cc
+: foreach $(TC_SRCS) | traverse_comp.hpp |> !cxx |> {tc_objs}
+: {tc_objs} |> !lxxd |> traverse_components
