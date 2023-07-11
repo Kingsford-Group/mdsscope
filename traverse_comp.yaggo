@@ -1,0 +1,22 @@
+purpose 'Traverse the component graph'
+description 'Start from one MDS, output all the components in the graph.'
+
+option('comps', 'c') {
+  description 'Output file for component'
+  required; c_string; typestr "path"
+}
+option('dot', 'd') {
+  description 'Output file for the component graph'
+  required; c_string; typestr "path"
+}
+option('progress', 'p') {
+  description 'Display progress'
+  flag; off
+}
+option('threads', 't') {
+  description 'Thread target (all)'
+  uint32; default 0
+}
+arg('comp') {
+  description 'component'
+  c_string; multiple}
