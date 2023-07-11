@@ -7,12 +7,17 @@
 #include "common.hpp"
 #include "mer_op.hpp"
 #include "mds_op.hpp"
+#include "imove_signature.hpp"
 
 // Figure out the possible I-moves by doing DFSs. Caches data: not multi-thread
 // safe (should have 1 object per-thread).
 template<typename mer_op_type>
 struct imoves_type {
     typedef mer_op_type mer_op_t;
+    typedef imove_type<mer_op_type> imove_t;
+    typedef imove_sig_type<mer_op_type> imove_sig_t;
+    typedef typename imove_t::mask_type mask_t;
+
     std::vector<bool> constrained;
     std::vector<tristate_t> visited;
     std::vector<mer_type> mds;
@@ -98,20 +103,25 @@ struct imoves_type {
     }
 
     template<typename C>
-    std::vector<mer_type> imoves(const C& mds) {
-        std::vector<mer_type> res;
+    imove_sig_t imoves(const C& mds) {
+        imove_sig_t res;
         imoves(mds, res);
         return res;
     }
 
-    // I-moves are unconstrained edges
+    // I-moves are set of unconstrained edges
     template<typename C>
-    void imoves(const C& mds, std::vector<mer_type>& res) {
-        res.reserve(mds.size());
+    void imoves(const C& mds, imove_sig_t& res) {
+        res.clear();
         fill_constrained(mds);
-        for(mer_type i = 0; i < constrained.size(); ++i) {
-            if(!constrained[i])
-                res.push_back(i);
+        for(mer_type fm = 0; fm < mer_op_t::nb_fmoves; ++fm) {
+            mask_t mask = 0;
+            for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+                if(constrained[mer_op_t::lc(fm, b)])
+                    mask |= (mask_t)1 << b;
+            }
+            if(mask != imove_t::none)
+                res.emplace_back(fm, mask);
         }
     }
 };
