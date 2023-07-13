@@ -1,6 +1,9 @@
 #ifndef MDS_OP_H_
 #define MDS_OP_H_
 
+#include <set>
+#include <algorithm>
+
 #include "dbg.hpp"
 #include "mer_op.hpp"
 #include "imove_signature.hpp"
@@ -96,18 +99,83 @@ struct mds_op_type {
     // in the component after traversing the I-move. nfmoves is a valid ordered
     // list of FMs in that new component as well.
     void traverse_imove(const imove_t& imove) {
+        std::cout << "traverse " << imove << " | " << fmoves << std::endl;
+
         std::fill(bmds.begin(), bmds.end(), nil);
         std::fill(nbmds.begin(), nbmds.end(), nil);
         fm_listA.clear();
         nfmoves.clear();
+        std::set<mer_type> targets;
 
         mask_t mask = 1;
         for(mer_t b = 0; b < mer_op_t::alpha; ++b, mask <<= 1) {
-            if(imove.im & mask == 0)
+            if((imove.im & mask) != 0) {
                 nbmds[mer_op_t::nmer(imove.fm, b)] = yes; // Mer known in new component
+            } else {
+                targets.insert(mer_op_t::lc(imove.fm, b));
+            }
+        }
+        std::cout << "targets " << targets << std::endl;
+        std::cout << "start nbmds " << nbmds << std::endl;
+
+        const mer_type fmi = std::find(fmoves.cbegin(), fmoves.cend(), imove.fm) - fmoves.cbegin();
+        nfmoves.push_back(imove.fm);
+        mer_type i = 0;
+        // Apply F-moves until all the targets (the nodes going around their
+        // PCRs) are reached.
+        for( ; i < mer_op_t::nb_fmoves && !targets.empty(); ++i) {
+            mer_type j = fmi + i;
+            if(j >= mer_op_t::nb_fmoves) j -= mer_op_t::nb_fmoves;
+            const mer_type nfm = fmoves[j];
+            std::cout << "nfm " << nfm << '\n';
+
+            bool touch_nbmds = false;
+            for(mer_type b = 0; !touch_nbmds && b < mer_op_t::alpha; ++b)
+                touch_nbmds = nbmds[mer_op_t::lc(nfm, b)] == yes;
+            if(touch_nbmds) {
+                nfmoves.push_back(nfm);
+                do_fmove(nfm, nbmds);
+                std::cout << "\tListB\n";
+            } else {
+                fm_listA.push_back(nfm);
+                do_fmove(nfm, bmds);
+                for(auto it = targets.cbegin(); it != targets.cend(); ) {
+                    if(bmds[*it] == yes) {
+                        auto cit = it; // Have to copy first as .erase will invalidate the iterator
+                        ++it;
+                        targets.erase(cit);
+                    } else {
+                        ++it;
+                    }
+                }
+                std::cout << "\tListA\n";
+            }
         }
 
+        // Continue doing the F-moves in order and apply to nbmds, then apply
+        // from listA (except fm)
+        for( ; i < mer_op_t::nb_fmoves; ++i) {
+            mer_type j = fmi + i;
+            if(j >= mer_op_t::nb_fmoves) j -= mer_op_t::nb_fmoves;
+            const mer_type nfm = fmoves[j];
+            do_fmove(nfm, nbmds);
+            assert2(nfmoves.size() < mer_op_t::nb_fmoves, "Too many F-moves in new component, fmoves");
+            nfmoves.push_back(nfm);
+        }
 
+        for(mer_type j = 1; j < fm_listA.size(); ++j) {
+            const mer_type nfm = fm_listA[j];
+            do_fmove(nfm, nbmds);
+            assert2(nfmoves.size() < mer_op_t::nb_fmoves, "Too many F-moves in new component, listA");
+            nfmoves.push_back(nfm);
+        }
+
+        // fm should be doable in nbmds
+#ifndef NDEBUG
+        std::cout << "nbmds " << nbmds << std::endl;
+        for(mer_type b = 0; b < mer_op_t::alpha; ++b)
+            assert2(nbmds[mer_op_t::lc(imove.fm, b)] == yes, "fm should be doable in new component " << imove.fm);
+#endif
     }
 };
 

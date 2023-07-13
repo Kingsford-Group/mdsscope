@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <cstdint>
 
 #include "common.hpp"
 #include "mer_op.hpp"
@@ -20,13 +21,13 @@ struct imoves_type {
 
     std::vector<bool> constrained;
     std::vector<tristate_t> visited;
-    std::vector<mer_type> mds;
+    // std::vector<mer_type> mds;
     std::vector<bool> done;
 
     imoves_type()
         : constrained(mer_op_t::nb_mers)
         , visited(mer_op_t::nb_mers)
-        , mds(mer_op_t::nb_mers)
+        // , mds(mer_op_t::nb_mers)
         , done(mer_op_t::nb_fmoves)
     { }
 
@@ -35,6 +36,7 @@ struct imoves_type {
     // to be sorted.
     template<typename C>
     void fill_constrained(const C& mds) {
+        std::cout << "fill_constrained " << mds << std::endl;
         std::fill(constrained.begin(), constrained.end(), false);
 
         // First mark all the left companions of the homopolymers as
@@ -56,10 +58,10 @@ struct imoves_type {
     }
 
     void visit_all(const std::vector<tristate_t>& bmds) {
-        mds.clear();
+        // mds.clear();
         for(mer_type mer = 0; mer < mer_op_t::nb_mers; ++mer) {
             if(includes(bmds, mer)) {
-                mds.push_back(mer);
+                // mds.push_back(mer);
                 std::fill(visited.begin(), visited.end(), nil);
                 visit(mer, mer, bmds, false);
             }
@@ -76,22 +78,27 @@ struct imoves_type {
 
     template<typename C>
     bool visit(mer_type start, mer_type mer, const C& mds, bool used_fmove) {
+        // std::cout << "visit " << start << ' ' << mer << ' ' << used_fmove << std::endl;
         if(visited[mer] != nil && used_fmove) return visited[mer] == yes;
 
         bool res = false;
         const auto nmer = mer_op_t::nmer(mer);
         const auto cycling = mer_op_t::rb(nmer); // Using that base is staying on PCR
 
+        // std::cout << "\tinfo " << nmer << ' ' << cycling << std::endl;
+
         for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
             // const auto b = (cycling + i) % mer_op_t::alpha;
             bool ufm = b != cycling; // Traversing a FM
             const mer_type m = mer_op_t::rc(nmer, b);
+            // std::cout << "\tloop " << m << ' ' << b << ' ' << ufm << std::endl;
             if(m == start) {
                 if(used_fmove) {
                     if(ufm) constrained[mer] = true;
                     res = true;
                 }
             } else if(!includes(mds, m)) {
+                // std::cout << "\trecurse " << m << ' ' << b << ' ' << ufm << std::endl;
                 const bool nres = visit(start, m, mds, used_fmove || ufm);
                 res = res || nres;
                 if(nres && ufm) constrained[mer] = true;

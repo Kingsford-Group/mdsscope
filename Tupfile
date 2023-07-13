@@ -3,18 +3,27 @@ include_rules
 export PKG_CONFIG_PATH
 
 # CXXFLAGS=-O3 -DNDEBUG -Wall -Werror -DHAVE_EXECINFO_H `pkg-config --cflags libxxhash` -pthread
-CXXFLAGS=-O0 -g -Wall -Werror -DHAVE_EXECINFO_H `pkg-config --cflags libxxhash` -pthread
-LDFLAGS=`pkg-config --libs-only-L libxxhash` -pthread
-LDLIBS=`pkg-config --libs-only-l libxxhash`
+CXXFLAGS=-Wall -Werror -DHAVE_EXECINFO_H -I$(TUP_VARIANTDIR) -pthread
+LDFLAGS=-pthread
+LDLIBS=
 
 CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA)
 
 # Library
 
 # Yaggo arg parsing
-: foreach *.yaggo |> !yaggo |> {args}
+: foreach traverse_comp.yaggo greedy_mds.yaggo |> !yaggo |>
+
+# Common
+COMMON_SRCS = backtrace.cc common.cc
+: foreach $(COMMON_SRCS) |> !cxx |> {common_objs}
 
 # traverse_components
-TC_SRCS = traverse_comp_main.cc backtrace.cc
+TC_SRCS = traverse_comp_main.cc
 : foreach $(TC_SRCS) | traverse_comp.hpp |> !cxx |> {tc_objs}
-: {tc_objs} |> !lxxd |> traverse_components
+: {tc_objs} {common_objs} |> !lxxd |> traverse_components
+
+# Greedy generation of MDS
+GG_SRCS = greedy_mds_main.cc
+: foreach $(GG_SRCS) | greedy_mds.hpp |> !cxx |> {gg_objs}
+: {gg_objs} {common_objs} |> !lxxd |> greedy_mds

@@ -1,0 +1,7 @@
+purpose 'Find all MDSs in a greedy way'
+description 'Exhaustively generate all PCR sets and print out the MDSs'
+
+arg('ignored') {
+    description 'No argument'
+    c_string
+}

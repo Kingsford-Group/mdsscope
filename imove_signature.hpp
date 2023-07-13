@@ -4,11 +4,25 @@
 #include <vector>
 #include <unordered_map>
 #include <xxh3.h>
+#include <ostream>
+#include <istream>
+#include <cstring>
 
 #include "mer_op.hpp"
+#include "common.hpp"
+
+// Base class that zeros itself upon construction. Guarantees that even the
+// unused bits (e.g., because of alignment of the fields) are deterministically
+// set to 0. Makes the hash function below work.
+template<typename D>
+struct zeroed {
+    zeroed() {
+        memset(this, '\0', sizeof(D));
+    }
+};
 
 template<typename mer_op_type>
-struct imove_type {
+struct imove_type : zeroed<imove_type<mer_op_type>> {
     typedef mer_op_type mer_op_t;
     typedef typename mer_op_type::mer_t mer_t;
     typedef uint8_t mask_type;
@@ -33,6 +47,11 @@ struct imove_type {
     imove_type() : fm(-1), im(-1) { } // Invalid will need to update
     imove_type(mer_t _fm, mask_type _im) : fm(_fm), im(_im) {}
 };
+
+template<typename mer_op_type>
+bool operator==(const imove_type<mer_op_type>& im1, const imove_type<mer_op_type>& im2) {
+    return im1.fm == im2.fm && im1.im == im2.im;
+}
 
 template<typename mer_op_type>
 using imove_sig_type = std::vector<imove_type<mer_op_type>>;

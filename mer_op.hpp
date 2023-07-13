@@ -91,6 +91,14 @@ struct mer_op_type {
             m = m * alpha + b;
         return m;
     }
+
+    static mer_type weight(const mer_type m) {
+        mer_type w = 0;
+        mer_type left = m;
+        for(unsigned int i = 0; i < k; ++i, left /= alpha)
+            w += left % alpha;
+        return w;
+    }
 };
 
 #endif // MER_OP_H
