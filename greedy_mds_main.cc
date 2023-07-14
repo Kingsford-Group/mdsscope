@@ -66,39 +66,61 @@ struct pcr_selection {
     typedef typename mer_op_type::mer_t mer_t;
     const pcr_info_type<mer_op_type>& pcr_info;
     std::vector<mer_t> selection;
-    std::vector<tristate_t> visiting;
-    std::vector<std::pair<mer_t, mer_t>> stack;
+    mer_t start_pcr, end_pcr;
 
 
     pcr_selection(const pcr_info_type<mer_op_type>& pi)
     : pcr_info(pi)
     , selection(pcr_info.pcrs.size(), 0)
+    , start_pcr(0)
+    , end_pcr(pcr_info.pcrs.size())
     {}
 
+    void clear() {
+        for(mer_t i = start_pcr; i < end_pcr; ++i)
+            selection[i] = 0;
+    }
+
     bool advance() {
-        ssize_t i = pcr_info.pcrs.size() - 1;
-        for( ; i >= 0; --i) {
+        ssize_t i = end_pcr - 1;
+        for( ; i >= start_pcr; --i) {
             ++selection[i];
             if(selection[i] < pcr_info.pcrs[i].size()) break;
             selection[i] = 0;
         }
-        return i >= 0;
+        return i >= start_pcr;
     }
 
-    inline bool is_selected(const mer_type mer) {
+    inline bool is_selected(const mer_type mer) const {
         const auto pcr = pcr_info.mer2pcr[mer];
         return mer == pcr_info.pcrs[pcr][selection[pcr]];
     }
 
-    bool is_dag() {
+    // Copy (sub-)selection from another set.
+    void copy(const std::vector<mer_t>& rhs, mer_type from = 0, mer_type len = std::numeric_limits<mer_type>::max()) {
+        if(from >= selection.size()) return;
+        const auto n = std::min(len, (mer_type)std::min(selection.size() - from, rhs.size()));
+        std::copy_n(rhs.begin(), n, selection.begin() + from);
+    }
+};
+
+template<typename mer_op_type>
+struct dfs_dag_type {
+    typedef typename mer_op_type::mer_t mer_t;
+    std::vector<tristate_t> visiting;
+    std::vector<std::pair<mer_t, mer_t>> stack;
+
+    bool is_dag(const pcr_selection<mer_op_type>& selection, mer_type start_pcr = 0, mer_type end_pcr = std::numeric_limits<mer_type>::max()) {
         // Do a DFS on the de Bruijn graph, avoiding the selected nodes, to
         // check if the remaining graph is a DAG
+        const pcr_info_type<mer_op_type>& pcr_info = selection.pcr_info;
         visiting.resize(mer_op_type::nb_mers);
         std::fill(visiting.begin(), visiting.end(), nil);
         stack.clear();
 
         for(mer_t mer = 0; mer < mer_op_type::nb_mers; ++mer) {
-            if(visiting[mer] != nil || is_selected(mer)) continue;
+            if(visiting[mer] != nil || selection.is_selected(mer) || pcr_info.mer2pcr[mer] < start_pcr || pcr_info.mer2pcr[mer] >= end_pcr)
+              continue;
             assert2(stack.empty(), "Stack not empty");
 
             visiting[mer] = yes;
@@ -115,7 +137,8 @@ struct pcr_selection {
 
                 ++stack.back().second;
                 mer_t nm = mer_op_type::nmer(m, b);
-                if(is_selected(nm)) continue;
+                if(selection.is_selected(nm) || pcr_info.mer2pcr[nm] < start_pcr || pcr_info.mer2pcr[nm] >= end_pcr)
+                    continue;
                 if(visiting[nm] == yes) return false;
                 if(visiting[nm] == nil) {
                     visiting[nm] = yes;
@@ -153,23 +176,51 @@ int main(int argc, char* argv[]) {
     // }
     // std::cout << std::flush;
     pcr_selection<mer_ops> selection(pcr_info);
+    dfs_dag_type<mer_ops> dfs_dag;
 
     // SPlit PCR space in 2: the heavy weights and the lighter ones. Pick just
     // enough PCRs to have no more than some number of possible PCR sets (say <
     // 10^7). Find the subset of those which are acyclic. Only those will be
     // tested later on.
-    // mer_type start_pcr = pcr_info.pcrs.size();
-    // constexpr size_t threshold = 10000000;
-    // size_t nb_pcr_sets = 1;
-    // while(start_pcr >= 1 && nb_pcr_sets < threshold) {
-    //     --start_pcr;
-    //     nb_pcr_sets *= pcr_info.pcrs[start_pcr].size();
-    // }
-    // std::cout << start_pcr << ' ' << nb_pcr_sets << std::endl;
+    mer_type start_pcr = pcr_info.pcrs.size();
+    constexpr size_t threshold = 1000000;
+    size_t nb_pcr_sets = 1;
+    while(start_pcr >= 1 && nb_pcr_sets < threshold) {
+        --start_pcr;
+        nb_pcr_sets *= pcr_info.pcrs[start_pcr].size();
+    }
+    std::cout << start_pcr << ' ' << nb_pcr_sets << std::endl;
 
+    selection.start_pcr = start_pcr;
+    selection.clear();
+
+    // Fill up cache
+    std::vector<std::vector<mer_ops::mer_t>> dag_cache;
     while(true) {
-        if(selection.is_dag())
-            std::cout << selection << '\n';
+        if(dfs_dag.is_dag(selection, selection.start_pcr))
+            dag_cache.emplace_back(selection.selection.cbegin() + start_pcr, selection.selection.cend());
+        if(!selection.advance())
+            break;
+    }
+
+    std::cout << "dag " << dag_cache.size() << '\n';
+
+    // Find all MDSs
+    selection.start_pcr = 0;
+    selection.end_pcr = start_pcr;
+    selection.clear();
+    pcr_selection<mer_ops> nselection(pcr_info);
+    while(true) {
+        nselection.copy(selection.selection, 0, start_pcr);
+
+        if(dfs_dag.is_dag(nselection, 0, start_pcr)) {
+            for(const auto& cached : dag_cache) {
+                nselection.copy(cached, start_pcr);
+                if(dfs_dag.is_dag(nselection))
+                    std::cout << nselection << '\n';
+            }
+        }
+
         if(!selection.advance())
             break;
     }
