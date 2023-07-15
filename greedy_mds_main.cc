@@ -1,8 +1,11 @@
 #include "greedy_mds.hpp"
 
+#include <iostream>
 #include <limits>
 #include <stack>
 #include <algorithm>
+#include <thread>
+#include <mutex>
 #include "mer_op.hpp"
 #include "common.hpp"
 #include "dbg.hpp"
@@ -67,6 +70,7 @@ struct pcr_selection {
     const pcr_info_type<mer_op_type>& pcr_info;
     std::vector<mer_t> selection;
     mer_t start_pcr, end_pcr;
+    bool done;
 
 
     pcr_selection(const pcr_info_type<mer_op_type>& pi)
@@ -74,21 +78,27 @@ struct pcr_selection {
     , selection(pcr_info.pcrs.size(), 0)
     , start_pcr(0)
     , end_pcr(pcr_info.pcrs.size())
+    , done(false)
     {}
 
     void clear() {
         for(mer_t i = start_pcr; i < end_pcr; ++i)
             selection[i] = 0;
+        done = false;
     }
 
     bool advance() {
+        if(done) return false;
+
         ssize_t i = end_pcr - 1;
         for( ; i >= start_pcr; --i) {
             ++selection[i];
             if(selection[i] < pcr_info.pcrs[i].size()) break;
             selection[i] = 0;
         }
-        return i >= start_pcr;
+        done = i < start_pcr;
+
+        return true;
     }
 
     inline bool is_selected(const mer_type mer) const {
@@ -162,12 +172,39 @@ std::ostream& operator<<(std::ostream& os, const pcr_selection<mer_op_type>& sel
     return os;
 }
 
+template<typename mer_op_type>
+void thread_worker(pcr_selection<mer_ops>& selection, std::mutex& selection_mtx,
+                   mer_type start_pcr,
+                   const std::vector<std::vector<typename mer_op_type::mer_t>>& dag_cache,
+                   std::mutex& output_mtx) {
+    pcr_selection<mer_op_type> nselection(selection.pcr_info);
+    dfs_dag_type<mer_op_type> dfs_dag;
+
+    while(true) {
+        {
+            std::lock_guard<std::mutex> lck(selection_mtx);
+            if(!selection.advance()) break;
+            nselection.copy(selection.selection, 0, start_pcr);
+        }
+
+        if(dfs_dag.is_dag(nselection, 0, start_pcr)) {
+            for(const auto& cached : dag_cache) {
+                nselection.copy(cached, start_pcr);
+                if(dfs_dag.is_dag(nselection)) {
+                    std::lock_guard<std::mutex> lck(output_mtx);
+                    std::cout << nselection << '\n';
+                }
+            }
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
     greedy_mds args(argc, argv);
 
     pcr_info_type<mer_ops> pcr_info;
-    // std::cout << "Generated PCR info: " << pcr_info.pcrs.size() << std::endl;
+    std::cerr << "Generated PCR info: " << pcr_info.pcrs.size() << std::endl;
     // for(const auto& pcr : pcr_info.pcrs) {
     //     std::cout << pcr.size() << ':';
     //     for(const auto m : pcr)
@@ -176,54 +213,51 @@ int main(int argc, char* argv[]) {
     // }
     // std::cout << std::flush;
     pcr_selection<mer_ops> selection(pcr_info);
-    dfs_dag_type<mer_ops> dfs_dag;
 
-    // SPlit PCR space in 2: the heavy weights and the lighter ones. Pick just
+    // Split PCR space in 2: the heavy weights and the lighter ones. Pick just
     // enough PCRs to have no more than some number of possible PCR sets (say <
     // 10^7). Find the subset of those which are acyclic. Only those will be
     // tested later on.
     mer_type start_pcr = pcr_info.pcrs.size();
-    constexpr size_t threshold = 1000000;
     size_t nb_pcr_sets = 1;
-    while(start_pcr >= 1 && nb_pcr_sets < threshold) {
+    while(start_pcr >= 1 && nb_pcr_sets < args.threshold_arg) {
         --start_pcr;
         nb_pcr_sets *= pcr_info.pcrs[start_pcr].size();
     }
-    std::cout << start_pcr << ' ' << nb_pcr_sets << std::endl;
+    std::cerr << "Start pcr: " << start_pcr << ' ' << nb_pcr_sets << std::endl;
 
     selection.start_pcr = start_pcr;
     selection.clear();
 
     // Fill up cache
     std::vector<std::vector<mer_ops::mer_t>> dag_cache;
-    while(true) {
-        if(dfs_dag.is_dag(selection, selection.start_pcr))
-            dag_cache.emplace_back(selection.selection.cbegin() + start_pcr, selection.selection.cend());
-        if(!selection.advance())
-            break;
+    {
+        dfs_dag_type<mer_ops> dfs_dag;
+        while(true) {
+            if(dfs_dag.is_dag(selection, selection.start_pcr))
+                dag_cache.emplace_back(selection.selection.cbegin() + start_pcr, selection.selection.cend());
+            if(!selection.advance())
+                break;
+        }
     }
 
-    std::cout << "dag " << dag_cache.size() << '\n';
+    std::cerr << "DAG cache: " << dag_cache.size() << '\n';
 
     // Find all MDSs
     selection.start_pcr = 0;
     selection.end_pcr = start_pcr;
     selection.clear();
-    pcr_selection<mer_ops> nselection(pcr_info);
-    while(true) {
-        nselection.copy(selection.selection, 0, start_pcr);
 
-        if(dfs_dag.is_dag(nselection, 0, start_pcr)) {
-            for(const auto& cached : dag_cache) {
-                nselection.copy(cached, start_pcr);
-                if(dfs_dag.is_dag(nselection))
-                    std::cout << nselection << '\n';
-            }
-        }
-
-        if(!selection.advance())
-            break;
+    std::vector<std::thread> threads;
+    std::mutex selection_mtx, output_mtx;
+    const auto nbthreads = args.threads_given ? args.threads_arg : std::thread::hardware_concurrency();
+    for(uint64_t i = 0; i < nbthreads; ++i) {
+        threads.push_back(std::thread(thread_worker<mer_ops>, std::ref(selection), std::ref(selection_mtx),
+                                      start_pcr, std::ref(dag_cache), std::ref(output_mtx)));
     }
+
+    for(auto& th : threads)
+        th.join();
 
     return 0;
 }

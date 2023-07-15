@@ -1,6 +1,16 @@
 purpose 'Find all MDSs in a greedy way'
 description 'Exhaustively generate all PCR sets and print out the MDSs'
 
+option("threshold") {
+    description "Threshold to split de Bruijn graph"
+    uint64; default 1_000_000
+}
+
+option('t', 'threads') {
+    description "Number of threads"
+    uint64
+}
+
 arg('ignored') {
     description 'No argument'
     c_string
