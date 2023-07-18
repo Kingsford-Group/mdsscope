@@ -10,3 +10,4 @@ config.status
 config.sub
 configure
 tup-generate.vardict
+build-*
