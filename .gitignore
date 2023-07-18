@@ -1,0 +1,12 @@
+.cache
+.tup
+.vscode
+aclocal.m4
+autom4te.cache
+compile_commands.json
+config.guess
+config.log
+config.status
+config.sub
+configure
+tup-generate.vardict
