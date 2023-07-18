@@ -52,4 +52,26 @@ std::ostream& operator<<(std::ostream& os, const std::unordered_map<T, V>& map) 
     return os;
 }
 
+template<typename C>
+struct join {
+    const C& c;
+    const char s;
+
+    join(const C& cont, char sep)
+        : c(cont)
+        , s(sep)
+    {}
+};
+
+template<typename C>
+std::ostream& operator<<(std::ostream& os, const join<C>& j) {
+    auto it = j.c.begin();
+    if(it != j.c.end()) {
+        os << *it;
+        for(++it; it != j.c.end(); ++it)
+            os << j.s << *it;
+    }
+    return os;
+}
+
 #endif // COMMON_H_

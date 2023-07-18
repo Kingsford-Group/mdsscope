@@ -7,12 +7,12 @@ CXXFLAGS=-Wall -Werror -DHAVE_EXECINFO_H -I$(TUP_VARIANTDIR) -pthread
 LDFLAGS=-pthread
 LDLIBS=
 
-CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA)
+CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA) -std=c++17
 
 # Library
 
 # Yaggo arg parsing
-: foreach traverse_comp.yaggo greedy_mds.yaggo |> !yaggo |>
+: foreach traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo |> !yaggo |>
 
 # Common
 COMMON_SRCS = backtrace.cc common.cc
@@ -27,3 +27,8 @@ TC_SRCS = traverse_comp_main.cc
 GG_SRCS = greedy_mds_main.cc
 : foreach $(GG_SRCS) | greedy_mds.hpp |> !cxx |> {gg_objs}
 : {gg_objs} {common_objs} |> !lxxd |> greedy_mds
+
+# Generate dot graph from MDS list
+GD_SRCS = mdss2dot.cc
+: foreach $(GD_SRCS) | mdss2dot.hpp |> !cxx |> {gd_objs}
+: {gd_objs} {common_objs} |> !lxxd |> mdss2dot

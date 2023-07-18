@@ -1,0 +1,7 @@
+purpose 'Generate dot file from MDS list'
+description ''
+
+arg('mds') {
+  description 'MDS list file'
+  c_string; typestr 'path'
+}
