@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 set -e
 
@@ -50,7 +50,7 @@ fi
 [ -z "$YAGGO" ] && YAGGO=$(which yaggo 2>/dev/null)
 
 XXHASH_CFLAGS=$(pkg-config --cflags libxxhash)
-XXHASH_LDFLAGS=$(pkg-config --libs-only-L libxxhash | sed 's/-L/-Wl,-r,/g')
+XXHASH_LDFLAGS=$(pkg-config --libs-only-L libxxhash | sed 's/-L/-Wl,-rpath,/g')
 XXHASH_LDLIBS=$(pkg-config --libs libxxhash)
 
 mkdir -p configs
