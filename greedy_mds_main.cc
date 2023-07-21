@@ -204,7 +204,7 @@ int main(int argc, char* argv[]) {
     greedy_mds args(argc, argv);
 
     pcr_info_type<mer_ops> pcr_info;
-    std::cerr << "Generated PCR info: " << pcr_info.pcrs.size() << std::endl;
+    // std::cerr << "Generated PCR info: " << pcr_info.pcrs.size() << std::endl;
     // for(const auto& pcr : pcr_info.pcrs) {
     //     std::cout << pcr.size() << ':';
     //     for(const auto m : pcr)
@@ -224,7 +224,7 @@ int main(int argc, char* argv[]) {
         --start_pcr;
         nb_pcr_sets *= pcr_info.pcrs[start_pcr].size();
     }
-    std::cerr << "Start pcr: " << start_pcr << ' ' << nb_pcr_sets << std::endl;
+    // std::cerr << "Start pcr: " << start_pcr << ' ' << nb_pcr_sets << std::endl;
 
     selection.start_pcr = start_pcr;
     selection.clear();
@@ -241,7 +241,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::cerr << "DAG cache: " << dag_cache.size() << '\n';
+    // std::cerr << "DAG cache: " << dag_cache.size() << '\n';
 
     // Find all MDSs
     selection.start_pcr = 0;

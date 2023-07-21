@@ -12,7 +12,8 @@ CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA) -std=c++17
 # Library
 
 # Yaggo arg parsing
-: foreach traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo |> !yaggo |>
+YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo
+: foreach $(YAGGO_SRCS) |> !yaggo |>
 
 # Common
 COMMON_SRCS = backtrace.cc common.cc
@@ -32,3 +33,8 @@ GG_SRCS = greedy_mds_main.cc
 GD_SRCS = mdss2dot.cc
 : foreach $(GD_SRCS) | mdss2dot.hpp |> !cxx |> {gd_objs}
 : {gd_objs} {common_objs} |> !lxxd |> mdss2dot
+
+# Generate dot file for 1 component, with rank for proper plotting
+CR_SRCS = comp2rankdot.cc
+: foreach $(CR_SRCS) | comp2rankdot.hpp |> !cxx |> {cr_objs}
+: {cr_objs} {common_objs} |> !lxxd |> comp2rankdot

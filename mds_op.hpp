@@ -36,6 +36,42 @@ struct mds_op_type {
         return true;
     }
 
+    static bool has_rfm(const std::vector<tristate_t> mds, mer_t rfm) {
+        rfm *= mer_op_t::alpha;
+        for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+            if(mds[mer_op_t::rc(rfm, b)] != yes)
+                return false;
+        }
+        return true;
+    }
+
+    static void from_mds_fms(const std::vector<mer_t>& mds, std::vector<tristate_t>& bmds, std::vector<mer_t>& fms) {
+        bmds.resize(mer_op_t::nb_mers);
+        std::fill(bmds.begin(), bmds.end(), no);
+        fms.clear();
+
+        for(auto m : mds) {
+            bmds[m] = yes;
+            const auto fm = mer_op_t::fmove(m);
+            if(has_fm(bmds, fm))
+                fms.push_back(fm);
+        }
+
+    }
+
+    static void from_mds_rfms(const std::vector<mer_t>& mds, std::vector<tristate_t>& bmds, std::vector<mer_t>& rfms) {
+        bmds.resize(mer_op_t::nb_mers);
+        std::fill(bmds.begin(), bmds.end(), no);
+        rfms.clear();
+
+        for(auto m : mds) {
+            bmds[m] = yes;
+            const auto rfm = mer_op_t::rfmove(m);
+            if(has_rfm(bmds, rfm))
+                rfms.push_back(rfm);
+        }
+    }
+
     // Given an MDS, fill bmds as a 1-hot vector representing mds and fill
     // fmoves as the equivalent order list of F-moves
     void mds2fmoves(const std::vector<mer_t>& mds) {
@@ -77,6 +113,16 @@ struct mds_op_type {
             assert2(bmds[m] != no, "Left companion not present " << fm << ' ' << b);
             bmds[m] = no;
             bmds[mer_op_t::nmer(m)] = yes;
+        }
+    }
+
+    static void do_rfmove(mer_type rfm, std::vector<tristate_t>& bmds) {
+        rfm *= mer_op_t::alpha;
+        for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+            const auto m = mer_op_t::rc(rfm, b);
+            assert2(bmds[m] != no, "Right companion not present " << rfm << ' ' << b);
+            bmds[m] = no;
+            bmds[mer_op_t::pmer(m)] = yes;
         }
     }
 
@@ -179,5 +225,10 @@ struct mds_op_type {
     }
 };
 
+//
+template<typename mer_op_type>
+struct mds_fms {
+
+};
 
 #endif // MDS_OP_H_

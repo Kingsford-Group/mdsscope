@@ -64,6 +64,11 @@ struct mer_op_type {
         return m % nb_fmoves;
     }
 
+    // RFmove corresponding to mer
+    static inline mer_type rfmove(const mer_type m) {
+        return m / alpha;
+    }
+
     // Are two mers left companions?
     static inline bool are_lc(const mer_type m1, const mer_type m2) {
         return fmove(m1) == fmove(m2);
