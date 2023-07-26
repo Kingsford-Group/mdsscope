@@ -30,7 +30,10 @@ struct imove_type : zeroed<imove_type<mer_op_type>> {
     static constexpr mask_type set_mask(mask_type x, unsigned int b) {
         return b ? set_mask(x | ((mask_type)1 << (b - 1)), b-1) : x;
     }
+
+    // TODO: interpretation of mask?
     static constexpr mask_type none = set_mask(0, mer_op_t::alpha);
+    static constexpr mask_type all = none;
 
     // An I-move is identified by the F-move suffix/prefix. im a a bit mask of
     // length ALPHA. A bit of 0 means at position x the left-companion lc(fm, x)

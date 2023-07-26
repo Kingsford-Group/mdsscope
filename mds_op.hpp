@@ -145,8 +145,6 @@ struct mds_op_type {
     // in the component after traversing the I-move. nfmoves is a valid ordered
     // list of FMs in that new component as well.
     void traverse_imove(const imove_t& imove) {
-        std::cout << "traverse " << imove << " | " << fmoves << std::endl;
-
         std::fill(bmds.begin(), bmds.end(), nil);
         std::fill(nbmds.begin(), nbmds.end(), nil);
         fm_listA.clear();
@@ -155,14 +153,12 @@ struct mds_op_type {
 
         mask_t mask = 1;
         for(mer_t b = 0; b < mer_op_t::alpha; ++b, mask <<= 1) {
-            if((imove.im & mask) != 0) {
+            if((imove.im & mask) == 0) {
                 nbmds[mer_op_t::nmer(imove.fm, b)] = yes; // Mer known in new component
             } else {
                 targets.insert(mer_op_t::lc(imove.fm, b));
             }
         }
-        std::cout << "targets " << targets << std::endl;
-        std::cout << "start nbmds " << nbmds << std::endl;
 
         const mer_type fmi = std::find(fmoves.cbegin(), fmoves.cend(), imove.fm) - fmoves.cbegin();
         nfmoves.push_back(imove.fm);
@@ -173,7 +169,6 @@ struct mds_op_type {
             mer_type j = fmi + i;
             if(j >= mer_op_t::nb_fmoves) j -= mer_op_t::nb_fmoves;
             const mer_type nfm = fmoves[j];
-            std::cout << "nfm " << nfm << '\n';
 
             bool touch_nbmds = false;
             for(mer_type b = 0; !touch_nbmds && b < mer_op_t::alpha; ++b)
@@ -181,7 +176,6 @@ struct mds_op_type {
             if(touch_nbmds) {
                 nfmoves.push_back(nfm);
                 do_fmove(nfm, nbmds);
-                std::cout << "\tListB\n";
             } else {
                 fm_listA.push_back(nfm);
                 do_fmove(nfm, bmds);
@@ -194,7 +188,6 @@ struct mds_op_type {
                         ++it;
                     }
                 }
-                std::cout << "\tListA\n";
             }
         }
 
@@ -218,7 +211,6 @@ struct mds_op_type {
 
         // fm should be doable in nbmds
 #ifndef NDEBUG
-        std::cout << "nbmds " << nbmds << std::endl;
         for(mer_type b = 0; b < mer_op_t::alpha; ++b)
             assert2(nbmds[mer_op_t::lc(imove.fm, b)] == yes, "fm should be doable in new component " << imove.fm);
 #endif

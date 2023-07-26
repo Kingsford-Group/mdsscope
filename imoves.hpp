@@ -3,12 +3,36 @@
 
 #include <vector>
 #include <algorithm>
+#include <bitset>
 #include <cstdint>
 
 #include "common.hpp"
 #include "mer_op.hpp"
 #include "mds_op.hpp"
 #include "imove_signature.hpp"
+
+// Encodes the constrains between lc/rc around an F-move.
+template<typename mer_op_type>
+struct f_constrains {
+    typedef typename mer_op_type::mer_t mer_t;
+    static constexpr size_t len = mer_op_type::alpha * (mer_op_type::alpha - 1);
+    std::bitset<len> bits;
+
+    inline static size_t index(mer_t i, mer_t j) { return i * (mer_op_type::alpha - 1) + j - (i < j); }
+    bool get(mer_t i, mer_t j) const { return bits[index(i, j)]; }
+    void set(mer_t i, mer_t j) { bits.set(index(i, j)); }
+    void reset() { bits.reset(); }
+};
+
+template<typename mer_op_type>
+std::ostream& operator<<(std::ostream& os, const f_constrains<mer_op_type>& c) {
+    for(size_t i = 0; i < mer_op_type::alpha; ++i) {
+        for(size_t j = 0; j < mer_op_type::alpha; ++j)
+            os << (i != j ? (c.get(i, j) ? '1' : '0') : '.');
+        os << '|';
+    }
+    return os;
+}
 
 // Figure out the possible I-moves by doing DFSs. Caches data: not multi-thread
 // safe (should have 1 object per-thread).
@@ -19,13 +43,13 @@ struct imoves_type {
     typedef imove_sig_type<mer_op_type> imove_sig_t;
     typedef typename imove_t::mask_type mask_t;
 
-    std::vector<bool> constrained;
+    std::vector<f_constrains<mer_op_type>> constrained;
     std::vector<tristate_t> visited;
     // std::vector<mer_type> mds;
     std::vector<bool> done;
 
     imoves_type()
-        : constrained(mer_op_t::nb_mers)
+        : constrained(mer_op_t::nb_fmoves)
         , visited(mer_op_t::nb_mers)
         // , mds(mer_op_t::nb_mers)
         , done(mer_op_t::nb_fmoves)
@@ -36,17 +60,18 @@ struct imoves_type {
     // to be sorted.
     template<typename C>
     void fill_constrained(const C& mds) {
-        std::cout << "fill_constrained " << mds << std::endl;
-        std::fill(constrained.begin(), constrained.end(), false);
+        for(auto& c : constrained)
+            c.reset();
 
+        // Not necessary anymore? Deal with more complicated case in imoves().
         // First mark all the left companions of the homopolymers as
         // constrained.
-        for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
-            const auto homopoly = mer_op_t::homopolymer(b);
-            for(mer_type lb = 0; lb < mer_op_t::alpha; ++lb) {
-                constrained[mer_op_t::lc(homopoly, lb)] = true;
-            }
-        }
+        // for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+        //     const auto homopoly = mer_op_t::homopolymer(b);
+        //     for(mer_type lb = 0; lb < mer_op_t::alpha; ++lb) {
+        //         constrained[mer_op_t::lc(homopoly, lb)] = true;
+        //     }
+        // }
         visit_all(mds);
     }
 
@@ -94,14 +119,14 @@ struct imoves_type {
             // std::cout << "\tloop " << m << ' ' << b << ' ' << ufm << std::endl;
             if(m == start) {
                 if(used_fmove) {
-                    if(ufm) constrained[mer] = true;
+                    if(ufm) constrained[mer_op_t::fmove(mer)].set(mer_op_t::lb(mer), b);
                     res = true;
                 }
             } else if(!includes(mds, m)) {
                 // std::cout << "\trecurse " << m << ' ' << b << ' ' << ufm << std::endl;
                 const bool nres = visit(start, m, mds, used_fmove || ufm);
                 res = res || nres;
-                if(nres && ufm) constrained[mer] = true;
+                if(nres && ufm) constrained[mer_op_t::fmove(mer)].set(mer_op_t::lb(mer), b);
             }
         }
 
@@ -121,14 +146,49 @@ struct imoves_type {
     void imoves(const C& mds, imove_sig_t& res) {
         res.clear();
         fill_constrained(mds);
+
+        // For combination of F-moves and mask, find those that are not
+        // constrained. If f is the homopolymer f = i^(k-1) with i \in \Sigma,
+        // then (f, m) with m_i = 1 and all other bits are 0 is not an I-move.
+        // It is no move at all. imilarly, (f, m) with m_i = 0 and all other
+        // bits are 1 is not an I-move, it is an (degenarated) F-move.
+        mer_type base = 0;
+        mask_t test1 = (mask_t)1 << base;
+        mask_t test2 = ~test1;
+        auto nhomo = mer_op_t::fmove(mer_op_t::homopolymer(base));
+
         for(mer_type fm = 0; fm < mer_op_t::nb_fmoves; ++fm) {
-            mask_t mask = 0;
-            for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
-                if(constrained[mer_op_t::lc(fm, b)])
-                    mask |= (mask_t)1 << b;
+            for(mask_t mask = 1; mask < imove_t::all; ++mask) {
+                if(fm == nhomo &&
+                   ( ((mask | test1) == imove_t::all) || ((mask & test2) == 0) ) )
+                    continue; // One of the degenerated cases: not an I-move
+
+                // Check if any of the bits set in the mask contradict the
+                // constrained cycles.
+                mask_t mi = 1;
+                bool is_possible = true;
+                for(mer_type i = 0; is_possible && i < mer_op_t::alpha; ++i, mi <<= 1) {
+                    if((mask & mi) == 0) continue;
+                    mer_type mj = 1;
+                    for(mer_type j = 0; j < mer_op_t::alpha; ++j, mj <<= 1) {
+                        if(i == j || (mask & mj ) != 0) continue;
+                        if(constrained[fm].get(i, j)) {
+                            is_possible = false;
+                            break;
+                        }
+                    }
+                }
+
+                if(is_possible)
+                    res.emplace_back(fm, mask);
             }
-            if(mask != imove_t::none)
-                res.emplace_back(fm, mask);
+
+            if(fm == nhomo) {
+                ++base;
+                nhomo = mer_op_t::fmove(mer_op_t::homopolymer(base));
+                test1 = (mask_t)1 << base;
+                test2 = ~test1;
+            }
         }
     }
 };
