@@ -9,7 +9,7 @@
 #include "mer_op.hpp"
 
 template<typename mer_type>
-std::vector<mer_type> mds_from_arg(const std::vector<const char*>& args) {
+std::vector<mer_type> mds_from_arg(const std::vector<const char*>& args, bool sort = true) {
     std::vector<mer_type> res;
     for(auto str : args) {
         const char* endptr = str;
@@ -18,7 +18,8 @@ std::vector<mer_type> mds_from_arg(const std::vector<const char*>& args) {
             endptr += strcspn(endptr, "0123456789");
         }
     }
-    std::sort(res.begin(), res.end());
+    if(sort)
+        std::sort(res.begin(), res.end());
     return res;
 }
 

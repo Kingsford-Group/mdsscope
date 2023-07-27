@@ -97,6 +97,11 @@ struct mer_op_type {
         return m;
     }
 
+    static mer_type is_homopolymer(const mer_type m) {
+        // Same as period-1 PCR
+        return nmer(m) == m;
+    }
+
     static mer_type weight(const mer_type m) {
         mer_type w = 0;
         mer_type left = m;

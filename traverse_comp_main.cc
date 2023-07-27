@@ -16,6 +16,11 @@
 #include "misc.hpp"
 #include "backtrace.hpp"
 
+// Only used for debugging.
+#ifndef NDEBUG
+#include "pcr_info.hpp"
+#endif
+
 typedef mer_op_type<K, ALPHA> mer_ops;
 
 
@@ -31,7 +36,12 @@ int main(int argc, char* argv[]) {
     comp_queue<mer_ops> queue(args.comps_arg);
     signatures_type<mer_ops> signatures;
 
+#ifndef NDEBUG
+    pcr_info_type<mer_ops> pcr_info;
+#endif
+
     const auto start(mds_from_arg<mer_type>(args.comp_arg));
+    assert2(pcr_info.check_mds(start), "Invalid starting MDS");
     // std::cout << "start " << start << std::endl;
     current.index = 0;
     current.ims = imoves_op.imoves(start);
@@ -54,6 +64,7 @@ int main(int argc, char* argv[]) {
         for(const auto im : current.ims) {
             // std::cout << "i-move " << im << std::endl;
             mds_op.traverse_imove(im);
+            assert2(pcr_info.check_bmds(mds_op.nbmds), "Invalid bmds after traversing I-move");
             imoves_op.imoves(mds_op.nbmds, nelt.ims);
             // std::cout << "nfmoves " << mds_op.nfmoves << " imoves " << nelt.ims << std::endl;
             nelt.fms.swap(mds_op.nfmoves);

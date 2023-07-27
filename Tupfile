@@ -12,7 +12,7 @@ CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA) -std=c++17
 # Library
 
 # Yaggo arg parsing
-YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo
+YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo fms2mds.yaggo
 : foreach $(YAGGO_SRCS) |> !yaggo |>
 
 # Common
@@ -38,3 +38,8 @@ GD_SRCS = mdss2dot.cc
 CR_SRCS = comp2rankdot.cc
 : foreach $(CR_SRCS) | comp2rankdot.hpp |> !cxx |> {cr_objs}
 : {cr_objs} {common_objs} |> !lxxd |> comp2rankdot
+
+# Transform list of FMs to an MDS
+FM_SRCS = fms2mds.cc
+: foreach $(FM_SRCS) | fms2mds.hpp |> !cxx |> {fm_objs}
+: {fm_objs} {common_objs} |> !lxxd |> fm2mds
