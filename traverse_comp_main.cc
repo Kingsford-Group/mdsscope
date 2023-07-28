@@ -40,6 +40,13 @@ int main(int argc, char* argv[]) {
     pcr_info_type<mer_ops> pcr_info;
 #endif
 
+    std::ofstream dot_fd(args.dot_arg);
+    if(!dot_fd.good()) {
+        std::cerr << "Failed to open " << args.dot_arg << std::endl;
+        return EXIT_FAILURE;
+    }
+    dot_fd << "digraph {\n";
+
     const auto start(mds_from_arg<mer_type>(args.comp_arg));
     assert2(pcr_info.check_mds(start), "Invalid starting MDS");
     // std::cout << "start " << start << std::endl;
@@ -72,11 +79,20 @@ int main(int argc, char* argv[]) {
             // std::cout << "insert " << ires.second << ' ' << ires.first->second << " | " << ires.first->first << std::endl;
             // std::cout << "signatures " << signatures << std::endl;
             nelt.index = ires.first->second;
-            // TODO: output dot file
+
+            // Output dot graph
+            // if(current.index < nelt.index) {
+                dot_fd << "  n" << current.index
+                       << " -> n" << nelt.index
+                       << " [label=\"" << im << "\"];\n";
+            // }
+
             if(!ires.second) continue;
             queue.enqueue(nelt);
         }
     }
+
+    dot_fd << "}\n";
 
     return 0;
 }

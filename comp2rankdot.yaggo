@@ -1,6 +1,11 @@
 purpose 'Generate dot file for 1 component, with rank for proper plotting'
 description 'From 1 MDS, do a BFS and layout each layer with same rank'
 
+option('l', 'longest') {
+  description 'Annotate with longest remaining path'
+  flag; off
+}
+
 arg('mds') {
   description 'MDS'
   c_string; multiple; typestr 'MDS'
