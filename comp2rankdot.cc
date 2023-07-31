@@ -3,6 +3,7 @@
 #include <set>
 #include <map>
 #include <memory>
+#include <fstream>
 
 #include "mer_op.hpp"
 #include "mds_op.hpp"
@@ -70,6 +71,7 @@ std::set<std::vector<tristate_t>> first_layer(const std::vector<tristate_t>& fir
 }
 
 int main(int argc, char* argv[]) {
+    std::ios::sync_with_stdio(false);
     comp2rankdot args(argc, argv);
 
     std::vector<tristate_t> first_bmds;
@@ -77,6 +79,12 @@ int main(int argc, char* argv[]) {
     mds = mds_from_arg<mer_t>(args.mds_arg);
     mds_ops::from_mds_fms(mds, first_bmds, first_fms);
     auto lp = std::unique_ptr<longest_path>(args.longest_flag ? new longest_path : nullptr);
+    std::pair<mer_t, mer_t> range{std::numeric_limits<mer_t>::max(), 0};
+    std::ofstream dot_fd(args.output_arg);
+    if(!dot_fd.good()) {
+        std::cerr << "Failed to open dot output file '" << args.output_arg << '\'' << std::endl;
+        return EXIT_FAILURE;
+    }
 
     layer_type olayer; // Original layer
     {
@@ -92,16 +100,20 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::cout << "digraph {\n"
+    dot_fd << "digraph {\n"
               << "node [shape=circle, style=filled, height=0.2, fixedsize=true];\n"
               << "{ rank = same; \n";
     for(const auto& mdsi : olayer) {
-        std::cout << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
-        if(lp)
-            std::cout << ':' << lp->longest_path(mdsi.first, mdsi.second.fms);
-        std::cout  << "\"];\n";
+        dot_fd << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
+        if(lp) {
+            const auto lpl = lp->longest_path(mdsi.first, mdsi.second.fms);
+            dot_fd << ':' << lpl;
+            range.first = std::min(range.first, lpl);
+            range.second = std::max(range.second, lpl);
+        }
+        dot_fd  << "\"];\n";
     }
-    std::cout << "}\n";
+    dot_fd << "}\n";
 
     // Loop over all layers. stop before the last one so as not to display the
     // first layer multiple times. Save original layer olayer to check
@@ -143,18 +155,22 @@ int main(int argc, char* argv[]) {
         assert2(!l2->empty(), "Empty layer2");
 
         // Print the next layer
-        std::cout << "{ rank=same;\n";
+        dot_fd << "{ rank=same;\n";
         for(const auto& mdsi : *l2) {
-            std::cout << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
-            if(lp)
-                std::cout << ':' << lp->longest_path(mdsi.first, mdsi.second.fms);
-            std::cout << "\"];\n";
+            dot_fd << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
+            if(lp) {
+                const auto lpl = lp->longest_path(mdsi.first, mdsi.second.fms);
+                dot_fd << ':' << lpl;
+                range.first = std::min(range.first, lpl);
+                range.second = std::max(range.second, lpl);
+            }
+            dot_fd << "\"];\n";
         }
-        std::cout << "}\n";
+        dot_fd << "}\n";
 
         // Print edges between the layers
         for(const auto edge : edges) {
-            std::cout << "  n" << edge.n1 << " -> " << 'n' << edge.n2 << " [tooltip=\"" << edge.fm << "\"];\n";
+            dot_fd << "  n" << edge.n1 << " -> " << 'n' << edge.n2 << " [tooltip=\"" << edge.fm << "\"];\n";
         }
     }
 
@@ -173,11 +189,14 @@ int main(int argc, char* argv[]) {
     }
     // Print edges between the layers
     for(const auto edge : edges) {
-        std::cout << "  n" << edge.n1 << " -> " << 'n' << edge.n2 << " [tooltip=\"" << edge.fm << "\"];\n";
+        dot_fd << "  n" << edge.n1 << " -> " << 'n' << edge.n2 << " [tooltip=\"" << edge.fm << "\"];\n";
     }
 
     // End of graph!
-    std::cout << "}\n";
+    dot_fd << "}\n";
+
+    if(lp)
+        std::cerr << "range: " << range.first << ' ' << range.second << "\n";
 
     return EXIT_SUCCESS;
 }

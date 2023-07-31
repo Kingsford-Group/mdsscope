@@ -6,6 +6,11 @@ option('l', 'longest') {
   flag; off
 }
 
+option('o', 'output') {
+  description 'Dot file output'
+  c_string; default '/dev/stdout'; typestr 'path'
+}
+
 arg('mds') {
   description 'MDS'
   c_string; multiple; typestr 'MDS'
