@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "traverse_comp.hpp"
 
 #ifndef K
@@ -22,6 +24,7 @@
 #endif
 
 typedef mer_op_type<K, ALPHA> mer_ops;
+typedef mer_ops::mer_t mer_t;
 
 
 int main(int argc, char* argv[]) {
@@ -47,7 +50,7 @@ int main(int argc, char* argv[]) {
     }
     dot_fd << "digraph {\n";
 
-    const auto start(mds_from_arg<mer_type>(args.comp_arg));
+    const auto start(mds_from_arg<mer_t>(args.comp_arg));
     assert2(pcr_info.check_mds(start), "Invalid starting MDS");
     // std::cout << "start " << start << std::endl;
     current.index = 0;

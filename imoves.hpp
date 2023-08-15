@@ -39,13 +39,14 @@ std::ostream& operator<<(std::ostream& os, const f_constrains<mer_op_type>& c) {
 template<typename mer_op_type>
 struct imoves_type {
     typedef mer_op_type mer_op_t;
+    typedef typename mer_op_t::mer_t mer_t;
     typedef imove_type<mer_op_type> imove_t;
     typedef imove_sig_type<mer_op_type> imove_sig_t;
     typedef typename imove_t::mask_type mask_t;
 
     std::vector<f_constrains<mer_op_type>> constrained;
     std::vector<tristate_t> visited;
-    // std::vector<mer_type> mds;
+    // std::vector<mer_t> mds;
     std::vector<bool> done;
 
     imoves_type()
@@ -66,16 +67,16 @@ struct imoves_type {
         // Not necessary anymore? Deal with more complicated case in imoves().
         // First mark all the left companions of the homopolymers as
         // constrained.
-        // for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+        // for(mer_t b = 0; b < mer_op_t::alpha; ++b) {
         //     const auto homopoly = mer_op_t::homopolymer(b);
-        //     for(mer_type lb = 0; lb < mer_op_t::alpha; ++lb) {
+        //     for(mer_t lb = 0; lb < mer_op_t::alpha; ++lb) {
         //         constrained[mer_op_t::lc(homopoly, lb)] = true;
         //     }
         // }
         visit_all(mds);
     }
 
-    void visit_all(const std::vector<mer_type>& mds) {
+    void visit_all(const std::vector<mer_t>& mds) {
         for(const auto mer : mds) {
             std::fill(visited.begin(), visited.end(), nil);
             visit(mer, mer, mds, false);
@@ -84,7 +85,7 @@ struct imoves_type {
 
     void visit_all(const std::vector<tristate_t>& bmds) {
         // mds.clear();
-        for(mer_type mer = 0; mer < mer_op_t::nb_mers; ++mer) {
+        for(mer_t mer = 0; mer < mer_op_t::nb_mers; ++mer) {
             if(includes(bmds, mer)) {
                 // mds.push_back(mer);
                 std::fill(visited.begin(), visited.end(), nil);
@@ -93,16 +94,16 @@ struct imoves_type {
         }
     }
 
-    inline static bool includes(const std::vector<mer_type>& mds, const mer_type m) {
+    inline static bool includes(const std::vector<mer_t>& mds, const mer_t m) {
         return std::binary_search(mds.cbegin(), mds.cend(), m);
     }
 
-    inline static bool includes(const std::vector<tristate_t>& mds, const mer_type m) {
+    inline static bool includes(const std::vector<tristate_t>& mds, const mer_t m) {
         return mds[m] == yes;
     }
 
     template<typename C>
-    bool visit(mer_type start, mer_type mer, const C& mds, bool used_fmove) {
+    bool visit(mer_t start, mer_t mer, const C& mds, bool used_fmove) {
         // std::cout << "visit " << start << ' ' << mer << ' ' << used_fmove << std::endl;
         if(visited[mer] != nil && used_fmove) return visited[mer] == yes;
 
@@ -112,10 +113,10 @@ struct imoves_type {
 
         // std::cout << "\tinfo " << nmer << ' ' << cycling << std::endl;
 
-        for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+        for(mer_t b = 0; b < mer_op_t::alpha; ++b) {
             // const auto b = (cycling + i) % mer_op_t::alpha;
             bool ufm = b != cycling; // Traversing a FM
-            const mer_type m = mer_op_t::rc(nmer, b);
+            const mer_t m = mer_op_t::rc(nmer, b);
             // std::cout << "\tloop " << m << ' ' << b << ' ' << ufm << std::endl;
             if(m == start) {
                 if(used_fmove) {
@@ -152,12 +153,12 @@ struct imoves_type {
         // then (f, m) with m_i = 1 and all other bits are 0 is not an I-move.
         // It is no move at all. imilarly, (f, m) with m_i = 0 and all other
         // bits are 1 is not an I-move, it is an (degenarated) F-move.
-        mer_type base = 0;
+        mer_t base = 0;
         mask_t test1 = (mask_t)1 << base;
         mask_t test2 = ~test1;
         auto nhomo = mer_op_t::fmove(mer_op_t::homopolymer(base));
 
-        for(mer_type fm = 0; fm < mer_op_t::nb_fmoves; ++fm) {
+        for(mer_t fm = 0; fm < mer_op_t::nb_fmoves; ++fm) {
             for(mask_t mask = 1; mask < imove_t::all; ++mask) {
                 if(fm == nhomo &&
                    ( ((mask | test1) == imove_t::all) || ((mask & test2) == 0) ) )
@@ -167,10 +168,10 @@ struct imoves_type {
                 // constrained cycles.
                 mask_t mi = 1;
                 bool is_possible = true;
-                for(mer_type i = 0; is_possible && i < mer_op_t::alpha; ++i, mi <<= 1) {
+                for(mer_t i = 0; is_possible && i < mer_op_t::alpha; ++i, mi <<= 1) {
                     if((mask & mi) == 0) continue;
-                    mer_type mj = 1;
-                    for(mer_type j = 0; j < mer_op_t::alpha; ++j, mj <<= 1) {
+                    mer_t mj = 1;
+                    for(mer_t j = 0; j < mer_op_t::alpha; ++j, mj <<= 1) {
                         if(i == j || (mask & mj ) != 0) continue;
                         if(constrained[fm].get(i, j)) {
                             is_possible = false;

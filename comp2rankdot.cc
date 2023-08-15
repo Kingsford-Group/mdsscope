@@ -45,7 +45,7 @@ std::set<std::vector<tristate_t>> first_layer(const std::vector<tristate_t>& fir
         // Do all F-moves from l1 -> l2, then all RF-moves from l2 -> l1. Done
         // if no new MDS added to l1.
         for(const auto& bmds : layer1) {
-            for(mer_type fm = 0; fm < mer_ops::nb_fmoves; ++fm) {
+            for(mer_t fm = 0; fm < mer_ops::nb_fmoves; ++fm) {
                 if(mds_ops::has_fm(bmds, fm)) {
                     nbmds = bmds;
                     mds_ops::do_fmove(fm, nbmds);
@@ -56,7 +56,7 @@ std::set<std::vector<tristate_t>> first_layer(const std::vector<tristate_t>& fir
 
         done = true;
         for(const auto& bmds : layer2) {
-            for(mer_type rfm = 0; rfm < mer_ops::nb_fmoves; ++rfm) {
+            for(mer_t rfm = 0; rfm < mer_ops::nb_fmoves; ++rfm) {
                 if(mds_ops::has_rfm(bmds, rfm)) {
                     nbmds = bmds;
                     mds_ops::do_rfmove(rfm, nbmds);
@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
     std::vector<mer_t> nfms;
     struct edge_type { size_t n1, n2; mer_t fm; };
     std::vector<edge_type> edges;
-    for(size_t fmi = 0; fmi < mer_ops::nb_fmoves - 1; ++fmi, std::swap(l1, l2)) {
+    for(size_t fmi = 0; fmi + 1 < mer_ops::nb_fmoves; ++fmi, std::swap(l1, l2)) {
         // Find next layer into *l2 and edges between *l1 and *l2
         l2->clear();
         edges.clear();
@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
                 nfms.insert(nfms.end(), it + 1, fms.end());
 
                 mds_ops::do_fmove(*it, nbmds);
-                for(mer_type b = 0; b < mer_ops::alpha; ++b) {
+                for(mer_t b = 0; b < mer_ops::alpha; ++b) {
                     const auto nfm = mer_ops::fmove(mer_ops::nmer(*it, b));
                     if(mds_ops::has_fm(nbmds, nfm))
                         nfms.push_back(nfm);

@@ -30,7 +30,7 @@ struct mds_op_type {
     {}
 
     static bool has_fm(const std::vector<tristate_t> mds, mer_t fm) {
-        for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+        for(mer_t b = 0; b < mer_op_t::alpha; ++b) {
             if(mds[mer_op_t::lc(fm, b)] != yes)
                 return false;
         }
@@ -39,7 +39,7 @@ struct mds_op_type {
 
     static bool has_rfm(const std::vector<tristate_t> mds, mer_t rfm) {
         rfm *= mer_op_t::alpha;
-        for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+        for(mer_t b = 0; b < mer_op_t::alpha; ++b) {
             if(mds[mer_op_t::rc(rfm, b)] != yes)
                 return false;
         }
@@ -62,7 +62,7 @@ struct mds_op_type {
 
     static void from_bmds_fms(const std::vector<tristate_t>& bmds, std::vector<mer_t>& fms) {
         fms.clear();
-        for(mer_type fm = 0; fm < mer_op_t::nb_fmoves; ++fm) {
+        for(mer_t fm = 0; fm < mer_op_t::nb_fmoves; ++fm) {
             if(has_fm(bmds, fm))
                 fms.push_back(fm);
         }
@@ -86,7 +86,7 @@ struct mds_op_type {
     void mds2fmoves(const std::vector<mer_t>& mds) {
         std::fill(bmds.begin(), bmds.end(), nil);
         std::fill(done.begin(), done.end(), false);
-        std::vector<mer_type> fms;
+        std::vector<mer_t> fms;
         for(auto m : mds) {
             bmds[m] = yes;
             const auto fm = mer_op_t::fmove(m);
@@ -94,9 +94,9 @@ struct mds_op_type {
                 fms.push_back(fm);
         }
 
-        mer_type i = 0;
+        mer_t i = 0;
         for( ; !fms.empty(); ++i) {
-            mer_type fm = fms.back();
+            mer_t fm = fms.back();
             fms.pop_back();
             fmoves[i] = fm;
 
@@ -105,7 +105,7 @@ struct mds_op_type {
             do_fmove(fm, bmds);
 
             const auto nm = mer_op_t::nmer(fm);
-            for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+            for(mer_t b = 0; b < mer_op_t::alpha; ++b) {
                 const auto nfm = mer_op_t::fmove(mer_op_t::rc(nm, b));
                 if(!done[nfm] && has_fm(bmds, nfm))
                     fms.push_back(nfm);
@@ -122,21 +122,21 @@ struct mds_op_type {
     }
 
 
-    static void do_fmove(mer_type fm, std::vector<tristate_t>& bmds) {
-        //assert2(mer_op_t::nb_mers == std::accumulate(bmds.cbegin(), bmds.cend(), 0, [](mer_type a, tristate_t x) { return a + (x == yes); }), "Too few mers in bmds");
-        for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+    static void do_fmove(mer_t fm, std::vector<tristate_t>& bmds) {
+        //assert2(mer_op_t::nb_mers == std::accumulate(bmds.cbegin(), bmds.cend(), 0, [](mer_t a, tristate_t x) { return a + (x == yes); }), "Too few mers in bmds");
+        for(mer_t b = 0; b < mer_op_t::alpha; ++b) {
             const auto m = mer_op_t::lc(fm, b);
             assert2(bmds[m] != no, "Left companion not present " << fm << ' ' << b);
             bmds[m] = no;
             assert2(bmds[mer_op_t::nmer(m)] != yes, "Right companion present " << fm << ' ' << b);
             bmds[mer_op_t::nmer(m)] = yes;
         }
-        // assert2(mer_op_t::nb_mers == std::accumulate(bmds.cbegin(), bmds.cend(), 0, [](mer_type a, tristate_t x) { return a + (x == yes); }), "Too few mers in bmds");
+        // assert2(mer_op_t::nb_mers == std::accumulate(bmds.cbegin(), bmds.cend(), 0, [](mer_t a, tristate_t x) { return a + (x == yes); }), "Too few mers in bmds");
     }
 
-    static void do_rfmove(mer_type rfm, std::vector<tristate_t>& bmds) {
+    static void do_rfmove(mer_t rfm, std::vector<tristate_t>& bmds) {
         rfm *= mer_op_t::alpha;
-        for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+        for(mer_t b = 0; b < mer_op_t::alpha; ++b) {
             const auto m = mer_op_t::rc(rfm, b);
             assert2(bmds[m] != no, "Right companion not present " << rfm << ' ' << b);
             bmds[m] = no;
@@ -146,7 +146,7 @@ struct mds_op_type {
     }
 
     // fromFmoves: initialize from a vector of fms. !!! Destructive !!!
-    void fromFmoves(std::vector<mer_type>& fms) {
+    void fromFmoves(std::vector<mer_t>& fms) {
         assert2(fms.size() == mer_op_t::nb_fmoves, "Wrong number of f-moves given " << fms.size());
         fmoves.swap(fms);
     }
@@ -168,7 +168,7 @@ struct mds_op_type {
         std::fill(nbmds.begin(), nbmds.end(), nil);
         fm_listA.clear();
         nfmoves.clear();
-        std::set<mer_type> targets;
+        std::set<mer_t> targets;
 
         mask_t mask = 1;
         for(mer_t b = 0; b < mer_op_t::alpha; ++b, mask <<= 1) {
@@ -180,18 +180,18 @@ struct mds_op_type {
             }
         }
 
-        const mer_type fmi = std::find(fmoves.cbegin(), fmoves.cend(), imove.fm) - fmoves.cbegin();
+        const mer_t fmi = std::find(fmoves.cbegin(), fmoves.cend(), imove.fm) - fmoves.cbegin();
         nfmoves.push_back(imove.fm);
-        mer_type i = 0;
+        mer_t i = 0;
         // Apply F-moves until all the targets (the nodes going around their
         // PCRs) are reached.
         for( ; i < mer_op_t::nb_fmoves && !targets.empty(); ++i) {
-            mer_type j = fmi + i;
+            mer_t j = fmi + i;
             if(j >= mer_op_t::nb_fmoves) j -= mer_op_t::nb_fmoves;
-            const mer_type nfm = fmoves[j];
+            const mer_t nfm = fmoves[j];
 
             bool touch_nbmds = false;
-            for(mer_type b = 0; !touch_nbmds && b < mer_op_t::alpha; ++b) {
+            for(mer_t b = 0; !touch_nbmds && b < mer_op_t::alpha; ++b) {
                 const mer_t m = mer_op_t::lc(nfm, b);
                 touch_nbmds = nbmds[m] == yes && !mer_op_t::is_homopolymer(m);
             }
@@ -216,16 +216,16 @@ struct mds_op_type {
         // Continue doing the F-moves in order and apply to nbmds, then apply
         // from listA (except fm)
         for( ; i < mer_op_t::nb_fmoves; ++i) {
-            mer_type j = fmi + i;
+            mer_t j = fmi + i;
             if(j >= mer_op_t::nb_fmoves) j -= mer_op_t::nb_fmoves;
-            const mer_type nfm = fmoves[j];
+            const mer_t nfm = fmoves[j];
             do_fmove(nfm, nbmds);
             assert2(nfmoves.size() < mer_op_t::nb_fmoves, "Too many F-moves in new component, fmoves");
             nfmoves.push_back(nfm);
         }
 
-        for(mer_type j = 1; j < fm_listA.size(); ++j) {
-            const mer_type nfm = fm_listA[j];
+        for(mer_t j = 1; j < fm_listA.size(); ++j) {
+            const mer_t nfm = fm_listA[j];
             do_fmove(nfm, nbmds);
             assert2(nfmoves.size() < mer_op_t::nb_fmoves, "Too many F-moves in new component, listA");
             nfmoves.push_back(nfm);
@@ -235,7 +235,7 @@ struct mds_op_type {
         // fm should be doable in nbmds
 #ifndef NDEBUG
         bool has_fmove = true;
-        for(mer_type b = 0; b < mer_op_t::alpha; ++b) {
+        for(mer_t b = 0; b < mer_op_t::alpha; ++b) {
             has_fmove = has_fmove && (nbmds[mer_op_t::lc(imove.fm, b)] == yes);
         }
         assert2(has_fmove, "fm should be doable in new component " << imove.fm);

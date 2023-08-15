@@ -20,6 +20,7 @@
 #endif
 
 typedef mer_op_type<K, ALPHA> mer_ops;
+typedef mer_ops::mer_t mer_t;
 
 template<typename mer_op_type>
 struct pcr_selection {
@@ -58,15 +59,15 @@ struct pcr_selection {
         return true;
     }
 
-    inline bool is_selected(const mer_type mer) const {
+    inline bool is_selected(const mer_t mer) const {
         const auto pcr = pcr_info.mer2pcr[mer];
         return mer == pcr_info.pcrs[pcr][selection[pcr]];
     }
 
     // Copy (sub-)selection from another set.
-    void copy(const std::vector<mer_t>& rhs, mer_type from = 0, mer_type len = std::numeric_limits<mer_type>::max()) {
+    void copy(const std::vector<mer_t>& rhs, mer_t from = 0, mer_t len = std::numeric_limits<mer_t>::max()) {
         if(from >= selection.size()) return;
-        const auto n = std::min(len, (mer_type)std::min(selection.size() - from, rhs.size()));
+        const auto n = std::min(len, (mer_t)std::min(selection.size() - from, rhs.size()));
         std::copy_n(rhs.begin(), n, selection.begin() + from);
     }
 };
@@ -77,7 +78,7 @@ struct dfs_dag_type {
     std::vector<tristate_t> visiting;
     std::vector<std::pair<mer_t, mer_t>> stack;
 
-    bool is_dag(const pcr_selection<mer_op_type>& selection, mer_type start_pcr = 0, mer_type end_pcr = std::numeric_limits<mer_type>::max()) {
+    bool is_dag(const pcr_selection<mer_op_type>& selection, mer_t start_pcr = 0, mer_t end_pcr = std::numeric_limits<mer_t>::max()) {
         // Do a DFS on the de Bruijn graph, avoiding the selected nodes, to
         // check if the remaining graph is a DAG
         const pcr_info_type<mer_op_type>& pcr_info = selection.pcr_info;
@@ -131,7 +132,7 @@ std::ostream& operator<<(std::ostream& os, const pcr_selection<mer_op_type>& sel
 
 template<typename mer_op_type>
 void thread_worker(pcr_selection<mer_ops>& selection, std::mutex& selection_mtx,
-                   mer_type start_pcr,
+                   mer_t start_pcr,
                    const std::vector<std::vector<typename mer_op_type::mer_t>>& dag_cache,
                    std::mutex& output_mtx) {
     pcr_selection<mer_op_type> nselection(selection.pcr_info);
@@ -175,7 +176,7 @@ int main(int argc, char* argv[]) {
     // enough PCRs to have no more than some number of possible PCR sets (say <
     // 10^7). Find the subset of those which are acyclic. Only those will be
     // tested later on.
-    mer_type start_pcr = pcr_info.pcrs.size();
+    mer_t start_pcr = pcr_info.pcrs.size();
     size_t nb_pcr_sets = 1;
     while(start_pcr >= 1 && nb_pcr_sets < args.threshold_arg) {
         --start_pcr;

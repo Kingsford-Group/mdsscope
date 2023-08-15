@@ -30,8 +30,8 @@ struct pcr_info_type {
     }
 
     void generate_PCRs() {
-        std::vector<mer_type> order(mer_op_type::nb_mers);
-        for(mer_type i = 0; i < mer_op_type::nb_mers; ++i)
+        std::vector<mer_t> order(mer_op_type::nb_mers);
+        for(mer_t i = 0; i < mer_op_type::nb_mers; ++i)
             order[i] = i;
         std::sort(order.begin(), order.end(),
                   [&](mer_t i, mer_t j) -> bool { return mer2weight[i] < mer2weight[j]; });
@@ -43,7 +43,7 @@ struct pcr_info_type {
             std::vector<mer_t> new_pcr;
             new_pcr.push_back(start);
             mer2pcr[start] = pcrs.size();
-            for(mer_type nmer = mer_op_type::nmer(start); nmer != start; nmer = mer_op_type::nmer(nmer)) {
+            for(mer_t nmer = mer_op_type::nmer(start); nmer != start; nmer = mer_op_type::nmer(nmer)) {
                 new_pcr.push_back(nmer);
                 mer2pcr[nmer] = pcrs.size();
             }
@@ -66,8 +66,8 @@ struct pcr_info_type {
     bool check_bmds(const std::vector<tristate_t>& bmds) {
         std::vector<bool> used_pcrs(pcrs.size(), false);
         if(bmds.size() != mer_op_t::nb_mers) return false;
-        mer_type count = 0;
-        for(mer_type m = 0; m < mer_op_t::nb_mers; ++m) {
+        mer_t count = 0;
+        for(mer_t m = 0; m < mer_op_t::nb_mers; ++m) {
             if(bmds[m] != yes) continue;
             ++count;
             const auto pcr = mer2pcr[m];
