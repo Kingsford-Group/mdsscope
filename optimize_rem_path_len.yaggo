@@ -1,0 +1,16 @@
+purpose 'Traverse MDS graph to optimize remaining path length'
+description ''
+
+option('iteration') {
+  description 'Maximum number of iterations'
+  uint64; default 1000
+}
+option('lambda') {
+  description 'Lower temperature factor'
+  double; default 0.99
+}
+
+arg('comp') {
+  description 'component'
+  c_string; multiple
+}

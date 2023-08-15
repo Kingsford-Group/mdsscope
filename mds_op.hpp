@@ -60,6 +60,14 @@ struct mds_op_type {
 
     }
 
+    static void from_bmds_fms(const std::vector<tristate_t>& bmds, std::vector<mer_t>& fms) {
+        fms.clear();
+        for(mer_type fm = 0; fm < mer_op_t::nb_fmoves; ++fm) {
+            if(has_fm(bmds, fm))
+                fms.push_back(fm);
+        }
+    }
+
     static void from_mds_rfms(const std::vector<mer_t>& mds, std::vector<tristate_t>& bmds, std::vector<mer_t>& rfms) {
         bmds.resize(mer_op_t::nb_mers);
         std::fill(bmds.begin(), bmds.end(), no);
