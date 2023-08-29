@@ -61,14 +61,14 @@ using imove_sig_type = std::vector<imove_type<mer_op_type>>;
 
 template<typename mer_op_type>
 std::ostream& operator<<(std::ostream& os, const imove_type<mer_op_type>& rhs) {
-    return os << rhs.fm << ':' << (unsigned int)rhs.im;
+    return os << (size_t)rhs.fm << ':' << (size_t)rhs.im;
 }
 
 template<typename mer_op_type>
 std::istream& operator>>(std::istream& is, imove_type<mer_op_type>& rhs) {
-    typename mer_op_type::mer_t fm;
-    char sep;
+    size_t fm;
     unsigned int im;
+    char sep;
     is >> fm >> sep >> im;
     if(fm < mer_op_type::nb_fmoves && im < imove_type<mer_op_type>::none && sep == ':') {
         rhs.fm = fm;

@@ -5,6 +5,7 @@
 
 #include "mer_op.hpp"
 #include "imove_signature.hpp"
+#include "common.hpp"
 
 template<typename mer_op_type>
 struct queue_elt {
@@ -28,8 +29,11 @@ std::istream& operator>>(std::istream& is, queue_elt<mer_op_type>& elt) {
     if(!is.good()) return is;
 
     // FMs
-    for(size_t i = 0; i < elt.fms.size(); ++i)
-        is >> elt.fms[i];
+    size_t value;
+    for(size_t i = 0; i < elt.fms.size(); ++i) {
+        is >> value;
+        elt.fms[i] = value;
+    }
     if(is.peek() != '\t') goto parse_failure;
     if(!is.good()) return is;
 
@@ -53,26 +57,10 @@ parse_failure:
 
 template<typename mer_op_type>
 std::ostream& operator<<(std::ostream& os, const queue_elt<mer_op_type>& elt) {
-    // Index
-    os << elt.index << '\t';
-    if(!os.good()) return os;
-
-    // FMs
-    os << elt.fms[0];
-    for(size_t i = 1; i < elt.fms.size(); ++i)
-        os << ' ' << elt.fms[i];
-    if(!os.good()) return os;
-
-    // NB IMs
-    os << '\t' << elt.ims.size() << '\t';
-    if(!os.good()) return os;
-
-    // IMs
-    if(!elt.ims.empty())
-        os << elt.ims[0];
-    for(size_t i = 1; i < elt.ims.size(); ++i)
-        os << ' ' << elt.ims[i];
-    return os;
+    return os << elt.index << '\t'
+              << joinT<size_t>(elt.fms, ' ') << '\t'
+              << elt.ims.size() << '\t'
+              << join(elt.ims, ' ');
 }
 
 // Queue made by reading/writing a file from "both ends".
