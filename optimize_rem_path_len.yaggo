@@ -10,6 +10,21 @@ option('lambda') {
   double; default 0.99
 }
 
+option('op') {
+  description 'Operation to optimize for'
+  enum 'min', 'max'
+}
+
+option('p', 'progress') {
+  description 'Show progress'
+  flag; off
+}
+
+option('f', 'mds') {
+  description 'File with MDS'
+  c_string; typestr 'path'
+}
+
 arg('comp') {
   description 'component'
   c_string; multiple

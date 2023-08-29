@@ -1,0 +1,11 @@
+description 'Find longest remaining path'
+
+option('f', 'mds') {
+  description 'File with MDS'
+  c_string; typestr 'path'
+}
+
+arg('comp') {
+  description 'component'
+  c_string; multiple
+}

@@ -5,8 +5,41 @@
 #include <inttypes.h>
 #include <type_traits>
 #include <cstdint>
+#include <limits>
 
-typedef uint16_t mer_type;
+// Number of bits to encode a^k
+constexpr unsigned int log2ak(unsigned int a, unsigned k) {
+    std::size_t val = 1;
+    unsigned int res = 0;
+    std::size_t bound = std::numeric_limits<std::size_t>::max() / a;
+    while(k > 0) {
+        if(val < bound) {
+            val *= a;
+            k -= 1;
+        } else {
+            val /= 2;
+            res += 1;
+        }
+    }
+    while(val > 0) {
+        val /= 2;
+        res += 1;
+    }
+    return res;
+}
+
+// Find the integer type in the list T, Ts... that is large enough for this number of bits
+template<unsigned bits, typename T, typename... Ts>
+struct optimal_int {
+    static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value, "Not an unsigned integer type");
+    typedef typename std::conditional<(bits > 8 * sizeof(T)), typename optimal_int<bits, Ts...>::type, T>::type type;
+};
+
+template<unsigned bits, typename T>
+struct optimal_int<bits, T> {
+    static_assert(bits <= 8 * sizeof(T), "Too many bits");
+    typedef T type;
+};
 
 template<typename T>
 constexpr typename std::enable_if<std::is_integral<T>::value, T>::type
@@ -24,7 +57,8 @@ ipow(T base, unsigned int exp) {
 
 template<unsigned int k_, unsigned int alpha_>
 struct mer_op_type {
-    typedef mer_type mer_t;
+//    typedef mer_type mer_t;
+    typedef typename optimal_int<log2ak(alpha_, k_), uint8_t, uint16_t, uint32_t, uint64_t>::type mer_t;
 
     constexpr static unsigned int k = k_;
     constexpr static unsigned int alpha = alpha_;

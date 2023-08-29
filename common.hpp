@@ -11,7 +11,7 @@
 // State of a mer. Either it is nil (unknown), no (absent), yes (present) or
 // blocked (should not take part in an F-move).
 enum tristate { nil, no, yes, blocked };
-typedef uint8_t tristate_t;
+typedef int8_t tristate_t;
 
 template<typename T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& mds) {
@@ -52,26 +52,38 @@ std::ostream& operator<<(std::ostream& os, const std::unordered_map<T, V>& map) 
     return os;
 }
 
-template<typename C>
-struct join {
-    const C& c;
-    const char s;
+// For when we have concepts!
+// template <typename T>
+// concept Streamable =
+//   requires(std::ostream &os, T value) {
+//     { os << value } -> std::convertible_to<std::ostream &>;
+// };
 
-    join(const C& cont, char sep)
+template<typename C, typename S, typename T = typename C::value_type>
+//requires Streamable<S> && Streamable<T>
+struct join {
+    typedef T value_type;
+    const C& c;
+    const S& s;
+
+    join(const C& cont, const S& sep)
         : c(cont)
         , s(sep)
     {}
 };
 
-template<typename C>
-std::ostream& operator<<(std::ostream& os, const join<C>& j) {
+template<typename C, typename S, typename T>
+std::ostream& operator<<(std::ostream& os, const join<C, S, T>& j) {
     auto it = j.c.begin();
     if(it != j.c.end()) {
-        os << *it;
+        os << static_cast<T>(*it);
         for(++it; it != j.c.end(); ++it)
-            os << j.s << *it;
+            os << j.s << static_cast<T>(*it);
     }
     return os;
 }
+
+template<typename T, typename S, typename C>
+auto joinT(const C& cont, const S& sep) -> join<C, S, T> { return join<C, S, T>(cont, sep); }
 
 #endif // COMMON_H_

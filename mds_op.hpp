@@ -111,7 +111,7 @@ struct mds_op_type {
                     fms.push_back(nfm);
             }
         }
-        assert2(i == mer_op_t::nb_fmoves, "Too few F-moves done " << i);
+        assert2(i == mer_op_t::nb_fmoves, "Too few F-moves done " << (uint64_t)i);
     }
 
     void fmoves2mds(const std::vector<mer_t>& fms) {

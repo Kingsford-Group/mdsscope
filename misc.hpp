@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cstring>
+#include <fstream>
+#include <iostream>
 
 #include "mer_op.hpp"
 
@@ -21,6 +23,19 @@ std::vector<mer_type> mds_from_arg(const std::vector<const char*>& args, bool so
     if(sort)
         std::sort(res.begin(), res.end());
     return res;
+}
+
+template<typename mer_t>
+std::vector<mer_t> read_mds_from_file(const char* path_mds) {
+    std::ifstream is(path_mds);
+    if(!is.good()) {
+        std::cerr << "Failed to open " << path_mds << std::endl;
+        exit(1);
+    }
+
+    std::string str(std::istreambuf_iterator<char>{is}, {});
+    std::vector<const char*> vs{str.c_str()};
+    return mds_from_arg<mer_t>(vs);
 }
 
 

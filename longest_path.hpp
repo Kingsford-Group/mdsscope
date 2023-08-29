@@ -65,7 +65,7 @@ struct longest_path_type {
         std::vector<mer_t> fms;
 
         mds_op_type<mer_op_type>::from_mds_fms(mds, bmds, fms);
-        return longest_path_type(bmds, fms);
+        return longest_path(bmds, fms);
     }
 
 
