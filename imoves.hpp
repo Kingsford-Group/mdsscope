@@ -84,7 +84,7 @@ struct imoves_type {
     }
 
     void visit_all(const std::vector<tristate_t>& bmds) {
-        // mds.clear();
+         // mds.clear();
         for(mer_t mer = 0; mer < mer_op_t::nb_mers; ++mer) {
             if(includes(bmds, mer)) {
                 // mds.push_back(mer);

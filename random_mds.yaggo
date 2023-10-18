@@ -1,0 +1,28 @@
+# frozen_string_literal: false
+
+purpose 'Generate a random MDS'
+description <<~HELP
+  Generate a random MDS. Works by starting with a random F-move. Then add
+  necessary nodes so that an F-move is always possible, until all F-moves have
+  been done. An F-move can be done multiple times.
+
+  Output either the set itself or a list of F-moves.
+HELP
+
+option('s', 'iseed') {
+  description 'Input seed file'
+  typestr 'path'
+  c_string
+}
+
+option('S', 'oseed') {
+  description 'Output seed file'
+  typestr 'path'
+  c_string
+}
+
+option('f', 'fmoves') {
+  description 'Output F-moves list instead of MDS k-mers'
+  flag
+  off
+}

@@ -9,6 +9,7 @@
 #include "mds_op.hpp"
 #include "longest_path.hpp"
 #include "misc.hpp"
+#include "common.hpp"
 #include "comp2rankdot.hpp"
 
 struct mds_info {
@@ -70,6 +71,14 @@ std::set<std::vector<tristate_t>> first_layer(const std::vector<tristate_t>& fir
     return layer1;
 }
 
+void update_ranges(std::vector<std::pair<mer_t, mer_t>>& fm_ranges, mer_t fmi) {
+    if(fm_ranges.empty() || (mer_t)(fm_ranges.back().second + 1) < fmi) {
+        fm_ranges.emplace_back(fmi, fmi);
+    } else if(fm_ranges.back().second != fmi) {
+        fm_ranges.back().second = fmi;
+    }
+}
+
 int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
     comp2rankdot args(argc, argv);
@@ -79,12 +88,14 @@ int main(int argc, char* argv[]) {
     mds = mds_from_arg<mer_t>(args.mds_arg);
     mds_ops::from_mds_fms(mds, first_bmds, first_fms);
     auto lp = std::unique_ptr<longest_path>(args.longest_flag ? new longest_path : nullptr);
-    std::pair<mer_t, mer_t> range{std::numeric_limits<mer_t>::max(), 0};
+    std::pair<mer_t, mer_t> lprange{std::numeric_limits<mer_t>::max(), 0}, llprange; // Longest path ranges (global and per layer)
+    std::pair<mer_t, mer_t> sprange(std::numeric_limits<mer_t>::max(), 0), lsprange; // Shortest path ranges
     std::ofstream dot_fd(args.output_arg);
     if(!dot_fd.good()) {
         std::cerr << "Failed to open dot output file '" << args.output_arg << '\'' << std::endl;
         return EXIT_FAILURE;
     }
+    std::cerr << "mds " << joinT<size_t>(mds, ',') << std::endl;
 
     layer_type olayer; // Original layer
     {
@@ -107,9 +118,9 @@ int main(int argc, char* argv[]) {
         dot_fd << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
         if(lp) {
             const auto lpl = lp->longest_path(mdsi.first, mdsi.second.fms);
-            dot_fd << ':' << lpl;
-            range.first = std::min(range.first, lpl);
-            range.second = std::max(range.second, lpl);
+            dot_fd << ':' << (uint64_t)lpl;
+            lprange.first = std::min(lprange.first, lpl);
+            lprange.second = std::max(lprange.second, lpl);
         }
         dot_fd  << "\"];\n";
     }
@@ -121,6 +132,7 @@ int main(int argc, char* argv[]) {
     layer_type layer1 = olayer, layer2;
     layer_type* l1 = &layer1;
     layer_type* l2 = &layer2;
+    std::vector<std::vector<std::pair<mer_t, mer_t>>> fms_ranges(mer_ops::nb_fmoves); // Ranges where F-move is used
     std::vector<tristate_t> nbmds;
     std::vector<mer_t> nfms;
     struct edge_type { size_t n1, n2; mer_t fm; };
@@ -129,6 +141,7 @@ int main(int argc, char* argv[]) {
         // Find next layer into *l2 and edges between *l1 and *l2
         l2->clear();
         edges.clear();
+        std::cerr << "s " << fmi << ' ' << l1->size() << ' ' << l2->size() << ' ' << edges.size() << std::endl;
         for(const auto& mdsi : *l1) {
             // std::cout << "Process " << mdsi.second.index << ": " << mdsi.first << " | " << mdsi.second.fms << '\n';
             const auto& fms = mdsi.second.fms;
@@ -146,31 +159,48 @@ int main(int argc, char* argv[]) {
                 }
                 fms_index val{nfms, 0};
                 auto iit  = l2->emplace(nbmds, std::move(val));
-                // std::cout << "emplace " << nbmds << " | " << nfms << " -> " << iit.second << '\n';
                 if(iit.second) iit.first->second.index = mds_info::total++;
                 edges.push_back({mdsi.second.index, iit.first->second.index, *it});
+                update_ranges(fms_ranges[*it], fmi);
             }
         }
 
         assert2(!l2->empty(), "Empty layer2");
 
         // Print the next layer
+        llprange.first = std::numeric_limits<mer_t>::max();
+        llprange.second = 0;
+        lsprange.first = std::numeric_limits<mer_t>::max();
+        lsprange.second = 0;
         dot_fd << "{ rank=same;\n";
         for(const auto& mdsi : *l2) {
             dot_fd << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
             if(lp) {
+                const auto spl = lp->shortest_path(mdsi.first, mdsi.second.fms);
                 const auto lpl = lp->longest_path(mdsi.first, mdsi.second.fms);
-                dot_fd << ':' << lpl;
-                range.first = std::min(range.first, lpl);
-                range.second = std::max(range.second, lpl);
+                dot_fd << ':' << (uint64_t)spl << ':' << (uint64_t)lpl;
+                lprange.first = std::min(lprange.first, lpl);
+                lprange.second = std::max(lprange.second, lpl);
+                llprange.first = std::min(llprange.first, lpl);
+                llprange.second = std::max(llprange.second, lpl);
+                sprange.first = std::min(sprange.first, spl);
+                sprange.second = std::max(sprange.second, spl);
+                lsprange.first = std::min(lsprange.first, spl);
+                lsprange.second = std::max(lsprange.second, spl);
+
             }
             dot_fd << "\"];\n";
         }
         dot_fd << "}\n";
 
+        std::cerr << "e " << fmi << ' ' << l1->size() << ' ' << l2->size() << ' ' << edges.size() << ' '
+                  << (size_t)lsprange.first << ':' << (size_t)lsprange.second << ' '
+                  << (size_t)llprange.first << ':' << (size_t)llprange.second << std::endl;
+
+
         // Print edges between the layers
         for(const auto edge : edges) {
-            dot_fd << "  n" << edge.n1 << " -> " << 'n' << edge.n2 << " [tooltip=\"" << edge.fm << "\"];\n";
+            dot_fd << "  n" << edge.n1 << " -> " << 'n' << edge.n2 << " [tooltip=\"" << (size_t)edge.fm << "\"];\n";
         }
     }
 
@@ -185,6 +215,7 @@ int main(int argc, char* argv[]) {
             const auto it = l2->find(nbmds); // No index. Not keeping this layer
             assert2(it != l2->end(), "Not going to olayer: " << mdsi.first << ' ' << fm << " -> " << nbmds);
             edges.push_back({mdsi.second.index, it->second.index, fm});
+            update_ranges(fms_ranges[fm], mer_ops::nb_fmoves - 1);
         }
     }
     // Print edges between the layers
@@ -196,7 +227,42 @@ int main(int argc, char* argv[]) {
     dot_fd << "}\n";
 
     if(lp)
-        std::cerr << "range: " << range.first << ' ' << range.second << "\n";
+        std::cerr << "ranges: " << (size_t)sprange.first << ' ' << (size_t)sprange.second << ' ' << (size_t)lprange.first << ' ' << (size_t)lprange.second << "\n";
+
+    // bool split_ranges = false;
+    // for(auto it = fms_ranges.cbegin(); it != fms_ranges.cend(); ++it) {
+    //     const size_t fm = it - fms_ranges.cbegin();
+    //     assert2(it->size() > 0, "F-move not used in graph " << fm);
+    //     size_t tr = 0; // sum of ranges
+    //     for(const auto& r : *it)
+    //         tr += r.second - r.first + 1;
+    //     auto nb = it->size();
+    //     std::cout << fm << ' ' << nb;
+    //     for(const auto& r : *it)
+    //         std::cout << ' ' << (size_t)r.first << '-' << (size_t)r.second;
+    //     std::cout << '\n';
+    //     if(nb > 1 && it->front().first == 0 && it->back().second == mer_ops::nb_fmoves - 1) // Wrap around? One less range really
+    //         --nb;
+    //     if(nb != 1 || tr == mer_ops::nb_fmoves) {
+    //         std::cout << fm << ' ' << nb << ' ' << tr << '\n';
+    //         // split_ranges = true;
+    //     }
+    // }
+    // for(mer_t fm1 = 0; fm1 < mer_ops::nb_fmoves; ++fm1) {
+    //     std::cout << (size_t)fm1 << ':';
+    //     for(mer_t fm2 = 0; fm2 < mer_ops::nb_fmoves; ++fm2) {
+    //         if(fm1 == fm2) continue;
+    //         bool overlap = false;
+    //         for(const auto& r1 : fms_ranges[fm1]) {
+    //             for(const auto& r2 : fms_ranges[fm2]) {
+    //                 overlap = overlap || (r1.second >= r2.first && r1.first <= r2.second);
+    //             }
+    //         }
+    //         if(!overlap)
+    //             std::cout << ' ' << (size_t)fm2;
+    //     }
+    //     std::cout << '\n';
+    // }
 
     return EXIT_SUCCESS;
 }

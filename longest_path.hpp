@@ -69,5 +69,43 @@ struct longest_path_type {
     }
 
 
+    mer_t shortest_path(const std::vector<tristate_t>& bmds, const std::vector<mer_t>& fms) {
+        // Because it is a DAG, do a BFS. Start from every F-move and traverse
+        // the DAG until encountering right-companions (an RF-move). Mark
+        // visited nodes with nil, to differenciate from nodes in the MDS.
+        assert2(bmds.size() == visited.size(), "Wrong bmds input bmds size");
+        std::copy(bmds.begin(), bmds.end(), visited.begin());
+        std::queue<std::pair<mer_t, mer_t>> queue; // Elements are mer, path length
+        for(auto fm : fms) {
+            for(mer_t b = 0; b < mer_op_type::alpha; ++b) {
+                const auto nm = mer_op_type::nmer(fm, b);
+                queue.emplace(nm, 1);
+                visited[nm] = nil;
+            }
+        }
+
+        while(!queue.empty()) {
+            const auto elt = queue.front();
+            queue.pop();
+
+            unsigned int nb_rc = 0; // Number of right companion of elt in MDS
+            for(mer_t b = 0; b < mer_op_type::alpha; ++b) {
+                const auto nm = mer_op_type::nmer(elt.first, b);
+                if(visited[nm] == yes) {
+                    ++nb_rc;
+                    continue;
+                } else if(visited[nm] == nil) {
+                    continue;
+                }
+                queue.emplace(nm, elt.second + 1);
+                visited[nm] = nil;
+            }
+            if(nb_rc == mer_op_type::alpha) // End of path, it is the shortest
+                return elt.second;
+        }
+        // Should not get there. Didn't find an RF-move, not an MDS.
+        assert2(false, "No RF-move found. Not an MDS");
+        return 0;
+    }
 };
 #endif // LONGEST_PATH_H_

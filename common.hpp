@@ -74,10 +74,10 @@ struct join {
 
 template<typename C, typename S, typename T>
 std::ostream& operator<<(std::ostream& os, const join<C, S, T>& j) {
-    auto it = j.c.begin();
-    if(it != j.c.end()) {
+    auto it = begin(j.c);
+    if(it != end(j.c)) {
         os << static_cast<T>(*it);
-        for(++it; it != j.c.end(); ++it)
+        for(++it; it != end(j.c); ++it)
             os << j.s << static_cast<T>(*it);
     }
     return os;

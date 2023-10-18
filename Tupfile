@@ -12,7 +12,7 @@ CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA) -std=c++17
 # Library
 
 # Yaggo arg parsing
-YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo fms2mds.yaggo optimize_rem_path_len.yaggo hongyu_set.yaggo find_longest_path.yaggo
+YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo fms2mds.yaggo optimize_rem_path_len.yaggo hongyu_set.yaggo find_longest_path.yaggo random_mds.yaggo random_pcr.yaggo
 : foreach $(YAGGO_SRCS) |> !yaggo |>
 
 # Common
@@ -58,3 +58,13 @@ HS_SRCS = hongyu_set.cc
 LP_SRCS = find_longest_path.cc
 : foreach $(LP_SRCS) | find_longest_path.hpp |> !cxx |> {lp_objs}
 : {lp_objs} {common_objs} |> !lxxd |> longest_path
+
+# Random MDS
+RM_SRCS = random_mds.cc
+: foreach $(RM_SRCS) | random_mds.hpp |> !cxx |> {rm_objs}
+: {rm_objs} {common_objs} |> !lxxd |> random_mds
+
+# Random PCR to MDS
+RP_SRCS = random_pcr.cc
+: foreach $(RP_SRCS) | random_pcr.hpp |> !cxx |> {rp_objs}
+: {rp_objs} {common_objs} |> !lxxd |> random_pcr

@@ -138,6 +138,10 @@ struct mer_op_type {
         return nmer(m) == m;
     }
 
+    static mer_t is_homopolymer_fm(const mer_t fm) {
+        return ((fm * alpha) % nb_fmoves + (fm % alpha)) == fm;
+    }
+
     static mer_t weight(const mer_t m) {
         mer_t w = 0;
         mer_t left = m;

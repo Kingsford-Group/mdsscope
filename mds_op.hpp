@@ -1,3 +1,4 @@
+
 #ifndef MDS_OP_H_
 #define MDS_OP_H_
 
@@ -241,12 +242,6 @@ struct mds_op_type {
         assert2(has_fmove, "fm should be doable in new component " << imove.fm);
 #endif
     }
-};
-
-//
-template<typename mer_op_type>
-struct mds_fms {
-
 };
 
 #endif // MDS_OP_H_

@@ -1,0 +1,26 @@
+# frozen_string_literal: false
+purpose 'Start from a random PCR and try to get to an MDS'
+description <<~HELP
+  Generate a random PCR by selecting a random node in each PCR. Then do F-moves
+  to check if we found an MDS. If not, do RF-moves to find a possible I-move. Do
+  the I-move and repeat.
+HELP
+
+option('s', 'iseed') {
+  description 'Input seed file'
+  typestr 'path'
+  c_string
+}
+
+option('S', 'oseed') {
+  description 'Output seed file'
+  typestr 'path'
+  c_string
+}
+
+option('m', 'max') {
+  description 'Max number of I-move operations'
+  typestr 'MAX'
+  uint32
+  default 100
+}
