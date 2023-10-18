@@ -19,7 +19,7 @@ option('S', 'oseed') {
 }
 
 option('m', 'max') {
-  description 'Max number of I-move operations'
+  description 'Max number of mer-move operations'
   typestr 'MAX'
   uint32
   default 100

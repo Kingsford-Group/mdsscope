@@ -1,10 +1,12 @@
 #include <cstdlib>
 #include <random>
+#include <stack>
 #include <vector>
 #include <deque>
 #include <bitset>
 #include <set>
 #include <map>
+#include <algorithm>
 
 #include "random_pcr.hpp"
 
@@ -215,6 +217,52 @@ struct mds_fms {
         }
         return res;
     }
+
+    void move_mer(const mer_t m) {
+        assert2(bmds.test(m), "Moving mer valid only for selected mers");
+        assert2(!mer_ops::is_homopolymer(m), "Move mer not well defined for homopolymers");
+
+        const auto nm = mer_ops::nmer(m);
+        const auto fm = mer_ops::fmove(m);
+        const auto pfm = mer_ops::fmove(mer_ops::pmer(m));
+        const auto nfm = mer_ops::fmove(nm);
+
+        fms.erase(fm);
+        rfms.erase(pfm);
+        ims.erase(pfm);
+
+        bmds.reset(m);
+        bmds.set(nm);
+
+        switch(classify_fm(fm, bmds)) {
+        case RFMove:
+            rfms.insert(fm);
+            ims.erase(fm);
+            break;
+        case IMove:
+            ims.insert(fm);
+            break;
+        case FMove:
+            assert2(false, "move mer created rogue F-move " << (size_t)m);
+            break;
+        default: break;
+        }
+
+        switch(classify_fm(nfm, bmds)) {
+        case FMove:
+            fms.insert(nfm);
+            ims.erase(nfm);
+            break;
+        case IMove:
+            ims.insert(nfm);
+            break;
+        case RFMove:
+            assert2(false, "move mer created rogue RF-move " << (size_t)m);
+            break;
+        default: break;
+
+        }
+    }
 };
 
 template<size_t S>
@@ -262,6 +310,11 @@ std::ostream& operator<<(std::ostream& os, const std::pair<const mer_t, uint8_t>
     return os << (size_t)x.first << ':' << (size_t)x.second;
 }
 
+std::ostream& operator<<(std::ostream& os, const std::pair<mer_t, mer_t>& x) {
+    return os << (size_t)x.first << ':' << (size_t)x.second;
+}
+
+
 template<typename T, typename R>
 typename std::set<T>::iterator random_set_elt(std::set<T>& s, R& rng) {
     auto ret = s.begin();
@@ -272,6 +325,95 @@ typename std::set<T>::iterator random_set_elt(std::set<T>& s, R& rng) {
     }
     return ret;
 }
+
+template<typename R>
+mer_t find_special_cycle(const std::bitset<mer_ops::nb_mers>& mds, std::vector<std::pair<mer_t, mer_t>>& scycle, R& rng) {
+    scycle.clear();
+
+    // Start with a random mer that is not a homopolymer
+    std::uniform_int_distribution<mer_t> mer_rng(0, mer_ops::nb_mers-1);
+    mer_t mer = mer_rng(rng);
+    while(mer_ops::is_homopolymer(mer))
+        mer = mer_rng(rng);
+
+    mer_t lcs[mer_ops::alpha]; // List of non-selected left-companions
+
+    // Traverse the PCR backward (following pmer()) until the selected mer of
+    // the PCR. If this mer is already in scycle, we found the cycle and we are
+    // done. Otherwise, add to scycle and choose at random one of the
+    // non-selected left companion (which must exists as there are no possible
+    // F-move).
+    while(true) {
+        for( ; !mds.test(mer); mer = mer_ops::pmer(mer)) ;
+
+        auto it = std::find_if(scycle.begin(), scycle.end(), [&](const std::pair<mer_t, mer_t>& m) { return m.first == mer; });
+        if(it != scycle.end())
+            return std::distance(scycle.begin(), it); // Found a cycle. Returned offset is start of cycle
+
+        unsigned nb_lcs = 0; // Number of unselected lc of mer found
+        for(mer_t b = 0; b < mer_ops::alpha; ++b) {
+            mer_t lcm = mer_ops::lc(mer, b);
+            if(!mds.test(lcm))
+                lcs[nb_lcs++] = lcm;
+        }
+        assert2(nb_lcs > 0, "No unselected left-companion in set with no possible F-move");
+
+        const auto nexti = std::uniform_int_distribution<unsigned>(0, nb_lcs-1)(rng);
+        scycle.emplace_back(mer, lcs[nexti]);
+        mer = lcs[nexti];
+    }
+
+    // Should never get here
+    return mer_ops::nb_mers;
+}
+
+// DFS from source to source. Used to check for the existence of weight 1 cycles
+// that are not PCRs.
+// struct partial_dfs_type {
+//     std::bitset<mer_ops::nb_mers> visiting;
+//     std::bitset<mer_ops::nb_mers> visited;
+//     std::stack<std::pair<mer_t, mer_t>> stack; // first: mer, second: base
+
+//     bool has_cycle(const std::bitset<mer_ops::nb_mers>& bmds, const mer_t start) {
+//         visiting.reset();
+//         visited.reset();
+
+
+//         for(mer_t start = 0; start < mer_ops::nb_mers; ++start) {
+//             if(bmds[start] == no && visit(bmds, start))
+//                 return true;
+//         }
+//         return false;
+//     }
+
+//     bool visit(const std::vector<tristate_t>& bmds, mer_t start) {
+//         stack.emplace(start, 0);
+//         visiting[start] = true;
+
+//         mer_t node, b;
+//         while(!stack.empty()) {
+//             std::tie(node, b) = stack.top();
+//             stack.pop();
+//             if(b >= mer_ops::alpha) {
+//                 visiting.set(node, false);
+//                 visited.set(node);
+//                 continue;
+//             }
+//             stack.emplace(node, b + 1);
+
+//             auto nnode = mer_ops::nmer(node, b);
+//             if(visiting[nnode])
+//                 return true; // Found back edge
+//             if(!visited[nnode] && bmds[nnode] == no) {
+//                 stack.emplace(nnode, 0);
+//                 visiting.set(nnode);
+//             }
+//         }
+
+//         return false;
+//     }
+// };
+
 
 // Algo:
 //
@@ -291,13 +433,14 @@ int main(int argc, char* argv[]) {
 
     struct mds_fms mds(rng);
 
-    uint32_t total_imoves = 0;
     mer_t total_moves = 0;
     std::bitset<mer_ops::nb_fmoves> done_moves;
-    std::map<std::pair<mer_t,uint8_t>, uint32_t> imoves_use;
+
+    std::vector<std::pair<mer_t, mer_t>> scycle; // Special hitting number 0 cycle
+    uint32_t mer_moves = 0;
 
     // Initialize at random
-    // std::cout << "initial: " << mds << std::endl;
+    std::cout << "initial: " << mds << std::endl;
 
     auto found_mds = false;
     auto done = false;
@@ -312,7 +455,7 @@ int main(int argc, char* argv[]) {
                 done_moves.set(fm);
                 ++total_moves;
             }
-            // std::cout << "f-move #" << (size_t)total_moves << ' ' << (size_t)fm << ": " << mds << std::endl;
+            std::cout << "f-move #" << (size_t)total_moves << ' ' << (size_t)fm << ": " << mds << std::endl;
         }
         // Found an MDS?
         if(total_moves == mer_ops::nb_fmoves) {
@@ -323,37 +466,22 @@ int main(int argc, char* argv[]) {
 
         assert2(mds.fms.empty(), "PCR set should have exhausted F-moves");
 
-        // Find I-moves while doing RF-moves
-        bool found_imove = false;
-        while(!found_imove) {
-            while(!mds.rfms.empty() && mds.ims.empty()) {
-                const auto fm = *random_set_elt(mds.rfms, rng);
-                mds.do_rfmove(fm);
-                // std::cout << "rf-move " << (size_t)fm << ": " << mds << std::endl;
-            }
+        // Find a special hitting number zero cycle and fix it. This cycle is
+        // guaranteed to exists because there are no possible F-move. Then pick
+        // a random mer on the cycle and move it into the cycle.
+        const auto offset = find_special_cycle(mds.bmds, scycle, rng);
+        std::cout << "scycle " << (size_t)offset << ' ' << join(scycle, ',') << std::endl;
+        assert2(!scycle.empty(), "Special cycle is empty");
+        assert2(offset < scycle.size(), "Start offset is larger than scycle.size");
+        const auto movei = std::uniform_int_distribution<size_t>(offset, scycle.size() - 1)(rng);
+        assert2(mds.bmds.test(scycle[movei].first), "Mer to move is not selected");
+        mds.move_mer(scycle[movei].first);
+        ++mer_moves;
+        if(mer_moves >= args.max_arg)
+            done = true;
+        std::cout << "m-move #" << (size_t)mer_moves << ' ' << (size_t)scycle[movei].first << ": " << mds << std::endl;
 
-            if(mds.ims.empty()) {
-                done = true;
-                break; // Not found an MDS
-            }
-
-            auto ims_it = random_set_elt(mds.ims, rng);
-            const auto ims = *ims_it;
-            const auto mask = mds.imove_mask(ims);
-            const auto ims_uses = ++imoves_use[std::make_pair(ims, mask)];
-            found_imove = (ims_uses == 1) || (ims_uses * rng() < 1.0);
-            if(found_imove) {
-                mds.do_imove(ims);
-                ++total_imoves;
-                // std::cout << "i-move #" << total_imoves << ' ' << (size_t)ims << ':' << (size_t)mask << ": " << mds <<  std::endl;
-                if(total_imoves >= args.max_arg)
-                    done = true;
-            } else {
-                // std::cout << "skip " << (size_t)ims << ':' << (size_t)mask << ' ' << ims_uses << std::endl;
-                mds.ims.erase(ims_it);
-            }
-        }
-        // mds after I-move is new starting point. Start over.
+        // mds after mer move is new starting point. Start over.
     }
 
     // if(found_mds)
