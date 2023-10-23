@@ -1,0 +1,10 @@
+# frozen_string_literal: false
+
+purpose ' Generate the Champarnaud decycling set'
+description <<~HELP
+  For each PCR, find the minimal k-mer m, do a principal division:
+
+  m = l^n u, with l a Lyndon word, the smallest one, and |l|<|u|
+
+  Output u l^n for each PCR.
+HELP

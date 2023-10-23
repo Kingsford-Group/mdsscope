@@ -12,7 +12,7 @@ CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA) -std=c++17
 # Library
 
 # Yaggo arg parsing
-YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo fms2mds.yaggo optimize_rem_path_len.yaggo hongyu_set.yaggo find_longest_path.yaggo random_mds.yaggo random_pcr.yaggo
+YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo fms2mds.yaggo optimize_rem_path_len.yaggo hongyu_set.yaggo find_longest_path.yaggo random_mds.yaggo random_pcr.yaggo champarnaud.yaggo
 : foreach $(YAGGO_SRCS) |> !yaggo |>
 
 # Common
@@ -68,3 +68,8 @@ RM_SRCS = random_mds.cc
 RP_SRCS = random_pcr.cc
 : foreach $(RP_SRCS) | random_pcr.hpp |> !cxx |> {rp_objs}
 : {rp_objs} {common_objs} |> !lxxd |> random_pcr
+
+# Champarnaud set
+CH_SRCS = champarnaud.cc
+: foreach $(CH_SRCS) | champarnaud.hpp |> !cxx |> {ch_objs}
+: {ch_objs} {common_objs} |> !lxxd |> champarnaud_set

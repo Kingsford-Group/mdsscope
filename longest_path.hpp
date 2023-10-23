@@ -57,6 +57,9 @@ struct longest_path_type {
             }
         }
 
+        if(std::any_of(visited.begin(), visited.end(), [](tristate_t x) { return x != yes; }))
+            return mer_op_type::nb_mers;
+
         return longest;
     }
 
