@@ -11,6 +11,11 @@ option('o', 'output') {
   c_string; default '/dev/stdout'; typestr 'path'
 }
 
+option('p', 'progress') {
+  description 'Show progress'
+  flag; off
+}
+
 arg('mds') {
   description 'MDS'
   c_string; multiple; typestr 'MDS'

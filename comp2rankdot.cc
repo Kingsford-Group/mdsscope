@@ -33,7 +33,7 @@ struct fms_index {
 };
 typedef std::map<std::vector<tristate_t>, fms_index> layer_type;
 
-std::set<std::vector<tristate_t>> first_layer(const std::vector<tristate_t>& first_bmds) {
+std::set<std::vector<tristate_t>> first_layer(const std::vector<tristate_t>& first_bmds, bool progress) {
     std::set<std::vector<tristate_t>> layer1, layer2;
     layer1.insert(first_bmds);
     std::vector<tristate_t> nbmds;
@@ -45,6 +45,8 @@ std::set<std::vector<tristate_t>> first_layer(const std::vector<tristate_t>& fir
     while(!done) {
         // Do all F-moves from l1 -> l2, then all RF-moves from l2 -> l1. Done
         // if no new MDS added to l1.
+        if(progress)
+            std::cerr << '\r' << layer1.size() << ' ' << layer2.size() << std::flush;
         for(const auto& bmds : layer1) {
             for(mer_t fm = 0; fm < mer_ops::nb_fmoves; ++fm) {
                 if(mds_ops::has_fm(bmds, fm)) {
@@ -56,6 +58,8 @@ std::set<std::vector<tristate_t>> first_layer(const std::vector<tristate_t>& fir
         }
 
         done = true;
+        if(progress)
+            std::cerr << '\r' << layer1.size() << ' ' << layer2.size() << std::flush;
         for(const auto& bmds : layer2) {
             for(mer_t rfm = 0; rfm < mer_ops::nb_fmoves; ++rfm) {
                 if(mds_ops::has_rfm(bmds, rfm)) {
@@ -90,16 +94,26 @@ int main(int argc, char* argv[]) {
     auto lp = std::unique_ptr<longest_path>(args.longest_flag ? new longest_path : nullptr);
     std::pair<mer_t, mer_t> lprange{std::numeric_limits<mer_t>::max(), 0}, llprange; // Longest path ranges (global and per layer)
     std::pair<mer_t, mer_t> sprange(std::numeric_limits<mer_t>::max(), 0), lsprange; // Shortest path ranges
-    std::ofstream dot_fd(args.output_arg);
-    if(!dot_fd.good()) {
-        std::cerr << "Failed to open dot output file '" << args.output_arg << '\'' << std::endl;
-        return EXIT_FAILURE;
+    std::pair<mer_t, mer_t> width_range; // Min and max width of a layer
+    size_t total_mds = 0; // Total number of MDSs seen
+
+
+    std::ofstream dot_fd;
+
+    if(strlen(args.output_arg) > 0) {
+        dot_fd.open(args.output_arg);
+        if(!dot_fd.good()) {
+            std::cerr << "Failed to open dot output file '" << args.output_arg << '\'' << std::endl;
+            return EXIT_FAILURE;
+        }
     }
-    std::cerr << "mds " << joinT<size_t>(mds, ',') << std::endl;
+
+    if(args.progress_flag)
+        std::cerr << "Initialize" << std::flush;
 
     layer_type olayer; // Original layer
     {
-        const auto mdss = first_layer(first_bmds);
+        const auto mdss = first_layer(first_bmds, args.progress_flag);
         for(auto& bmds : mdss) {
             std::vector<mer_t> fms;
             for(mer_t fm = 0; fm < mer_ops::nb_fmoves; ++fm) {
@@ -111,20 +125,25 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    dot_fd << "digraph {\n"
-              << "node [shape=circle, style=filled, height=0.2, fixedsize=true];\n"
-              << "{ rank = same; \n";
-    for(const auto& mdsi : olayer) {
-        dot_fd << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
-        if(lp) {
-            const auto lpl = lp->longest_path(mdsi.first, mdsi.second.fms);
-            dot_fd << ':' << (uint64_t)lpl;
-            lprange.first = std::min(lprange.first, lpl);
-            lprange.second = std::max(lprange.second, lpl);
+    width_range.first = width_range.second = olayer.size();
+    total_mds = olayer.size();
+
+    if(dot_fd.is_open()) {
+        dot_fd << "digraph {\n"
+               << "node [shape=circle, style=filled, height=0.2, fixedsize=true];\n"
+               << "{ rank = same; \n";
+        for(const auto& mdsi : olayer) {
+            dot_fd << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
+            if(lp) {
+                const auto lpl = lp->longest_path(mdsi.first, mdsi.second.fms);
+                dot_fd << ':' << (uint64_t)lpl;
+                lprange.first = std::min(lprange.first, lpl);
+                lprange.second = std::max(lprange.second, lpl);
+            }
+            dot_fd  << "\"];\n";
         }
-        dot_fd  << "\"];\n";
+        dot_fd << "}\n";
     }
-    dot_fd << "}\n";
 
     // Loop over all layers. stop before the last one so as not to display the
     // first layer multiple times. Save original layer olayer to check
@@ -137,11 +156,13 @@ int main(int argc, char* argv[]) {
     std::vector<mer_t> nfms;
     struct edge_type { size_t n1, n2; mer_t fm; };
     std::vector<edge_type> edges;
+    bool is_mds = true;
     for(size_t fmi = 0; fmi + 1 < mer_ops::nb_fmoves; ++fmi, std::swap(l1, l2)) {
+        if(args.progress_flag)
+            std::cerr << '\r' << fmi << ' ' << total_mds << ' ' << (size_t)width_range.first << ':' << (size_t)width_range.second << std::flush;
         // Find next layer into *l2 and edges between *l1 and *l2
         l2->clear();
         edges.clear();
-        std::cerr << "s " << fmi << ' ' << l1->size() << ' ' << l2->size() << ' ' << edges.size() << std::endl;
         for(const auto& mdsi : *l1) {
             // std::cout << "Process " << mdsi.second.index << ": " << mdsi.first << " | " << mdsi.second.fms << '\n';
             const auto& fms = mdsi.second.fms;
@@ -165,69 +186,84 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        assert2(!l2->empty(), "Empty layer2");
+        if(l2->empty()) {
+            is_mds = false;
+            break;
+        }
 
         // Print the next layer
         llprange.first = std::numeric_limits<mer_t>::max();
         llprange.second = 0;
         lsprange.first = std::numeric_limits<mer_t>::max();
         lsprange.second = 0;
-        dot_fd << "{ rank=same;\n";
-        for(const auto& mdsi : *l2) {
-            dot_fd << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
-            if(lp) {
-                const auto spl = lp->shortest_path(mdsi.first, mdsi.second.fms);
-                const auto lpl = lp->longest_path(mdsi.first, mdsi.second.fms);
-                dot_fd << ':' << (uint64_t)spl << ':' << (uint64_t)lpl;
-                lprange.first = std::min(lprange.first, lpl);
-                lprange.second = std::max(lprange.second, lpl);
-                llprange.first = std::min(llprange.first, lpl);
-                llprange.second = std::max(llprange.second, lpl);
-                sprange.first = std::min(sprange.first, spl);
-                sprange.second = std::max(sprange.second, spl);
-                lsprange.first = std::min(lsprange.first, spl);
-                lsprange.second = std::max(lsprange.second, spl);
+        if(l2->size() < width_range.first)
+            width_range.first = l2->size();
+        if(l2->size() > width_range.second)
+            width_range.second = l2->size();
+        total_mds += l2->size();
 
+        if(dot_fd.is_open()) {
+            dot_fd << "{ rank=same;\n";
+            for(const auto& mdsi : *l2) {
+                dot_fd << "  n" << mdsi.second.index << " [label=\"\",tooltip=\"" << mdsi.first;
+                if(lp) {
+                    const auto spl = lp->shortest_path(mdsi.first, mdsi.second.fms);
+                    const auto lpl = lp->longest_path(mdsi.first, mdsi.second.fms);
+                    dot_fd << ':' << (uint64_t)spl << ':' << (uint64_t)lpl;
+                    lprange.first = std::min(lprange.first, lpl);
+                    lprange.second = std::max(lprange.second, lpl);
+                    llprange.first = std::min(llprange.first, lpl);
+                    llprange.second = std::max(llprange.second, lpl);
+                    sprange.first = std::min(sprange.first, spl);
+                    sprange.second = std::max(sprange.second, spl);
+                    lsprange.first = std::min(lsprange.first, spl);
+                    lsprange.second = std::max(lsprange.second, spl);
+
+                }
+                dot_fd << "\"];\n";
             }
-            dot_fd << "\"];\n";
+            dot_fd << "}\n";
+
+            // Print edges between the layers
+            for(const auto edge : edges) {
+                dot_fd << "  n" << edge.n1 << " -> " << 'n' << edge.n2 << " [tooltip=\"" << (size_t)edge.fm << "\"];\n";
+            }
         }
-        dot_fd << "}\n";
+    }
 
-        std::cerr << "e " << fmi << ' ' << l1->size() << ' ' << l2->size() << ' ' << edges.size() << ' '
-                  << (size_t)lsprange.first << ':' << (size_t)lsprange.second << ' '
-                  << (size_t)llprange.first << ':' << (size_t)llprange.second << std::endl;
-
-
+    // Every edge from *l1 should now aim to an MDS in olayer. Check that and
+    // add edges.
+    if(is_mds && dot_fd.is_open()) {
+        edges.clear();
+        l2 = &olayer;
+        for(const auto& mdsi : *l1) {
+            for(const auto fm : mdsi.second.fms) {
+                nbmds = mdsi.first;
+                mds_ops::do_fmove(fm, nbmds);
+                const auto it = l2->find(nbmds); // No index. Not keeping this layer
+                assert2(it != l2->end(), "Not going to olayer: " << mdsi.first << ' ' << fm << " -> " << nbmds);
+                edges.push_back({mdsi.second.index, it->second.index, fm});
+                update_ranges(fms_ranges[fm], mer_ops::nb_fmoves - 1);
+            }
+        }
         // Print edges between the layers
         for(const auto edge : edges) {
             dot_fd << "  n" << edge.n1 << " -> " << 'n' << edge.n2 << " [tooltip=\"" << (size_t)edge.fm << "\"];\n";
         }
     }
 
-    // Every edge from *l1 should now aim to an MDS in olayer. Check that and
-    // add edges.
-    edges.clear();
-    l2 = &olayer;
-    for(const auto& mdsi : *l1) {
-        for(const auto fm : mdsi.second.fms) {
-            nbmds = mdsi.first;
-            mds_ops::do_fmove(fm, nbmds);
-            const auto it = l2->find(nbmds); // No index. Not keeping this layer
-            assert2(it != l2->end(), "Not going to olayer: " << mdsi.first << ' ' << fm << " -> " << nbmds);
-            edges.push_back({mdsi.second.index, it->second.index, fm});
-            update_ranges(fms_ranges[fm], mer_ops::nb_fmoves - 1);
-        }
-    }
-    // Print edges between the layers
-    for(const auto edge : edges) {
-        dot_fd << "  n" << edge.n1 << " -> " << 'n' << edge.n2 << " [tooltip=\"" << edge.fm << "\"];\n";
-    }
-
     // End of graph!
-    dot_fd << "}\n";
+    if(dot_fd.is_open())
+        dot_fd << "}\n";
+
+    if(args.progress_flag)
+        std::cerr << std::endl;
 
     if(lp)
         std::cerr << "ranges: " << (size_t)sprange.first << ' ' << (size_t)sprange.second << ' ' << (size_t)lprange.first << ' ' << (size_t)lprange.second << "\n";
+    std::cerr << "mds: " << is_mds << '\n';
+    std::cerr << "width: " << (size_t)width_range.first << ' ' << (size_t)width_range.second << '\n';
+    std::cerr << "total: " << total_mds << '\n';
 
     // bool split_ranges = false;
     // for(auto it = fms_ranges.cbegin(); it != fms_ranges.cend(); ++it) {

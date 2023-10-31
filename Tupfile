@@ -42,7 +42,7 @@ CR_SRCS = comp2rankdot.cc
 # Transform list of FMs to an MDS
 FM_SRCS = fms2mds.cc
 : foreach $(FM_SRCS) | fms2mds.hpp |> !cxx |> {fm_objs}
-: {fm_objs} {common_objs} |> !lxxd |> fm2mds
+: {fm_objs} {common_objs} |> !lxxd |> fms2mds
 
 # Optimize remaining path length
 OL_SRCS = optimize_rem_path_len.cc
