@@ -28,10 +28,11 @@ EOF
 }
 
 OPTFLAGS="-O3 -DNDEBUG"
+SUFFIX=
 
 while getopts "dh" o; do
     case "${o}" in
-        (d) OPTFLAGS="-O0 -g" ;;
+        (d) OPTFLAGS="-O0 -g"; SUFFIX="-debug" ;;
         (h) help; exit 0 ;;
         (*) usage; exit 1 ;;
     esac
@@ -46,21 +47,17 @@ if [ -z "$ALPHA" ] || [ -z "$K" ]; then
     exit 1
 fi
 
-NAME="A${ALPHA}K${K}"
+NAME="A${ALPHA}K${K}${SUFFIX}"
 
 [ -z "$YAGGO" ] && YAGGO=$(which yaggo 2>/dev/null)
-
-XXHASH_CFLAGS=$(pkg-config --cflags libxxhash)
-XXHASH_LDFLAGS=$(pkg-config --libs-only-L libxxhash | sed 's/-L/-Wl,-rpath,/g')
-XXHASH_LDLIBS=$(pkg-config --libs libxxhash)
 
 mkdir -p configs
 cat > "configs/${NAME}.config" <<EOF
 CONFIG_ALPHA=$ALPHA
 CONFIG_K=$K
-CONFIG_CXXFLAGS=$OPTFLAGS $XXHASH_CFLAGS $CXXFLAGS
-CONFIG_LDFLAGS=$XXHASH_LDFLAGS $LDFLAGS
-CONFIG_LDLIBS=$XXHASH_LDLIBS $LDLIBS
+CONFIG_CXXFLAGS=$OPTFLAGS $CXXFLAGS
+CONFIG_LDFLAGS=$LDFLAGS
+CONFIG_LDLIBS=$LDLIBS
 CONFIG_YAGGO=$YAGGO
 EOF
 
