@@ -3,7 +3,7 @@
 set -e
 
 usage() {
-    echo "Usage: $0 [options] name ALPHA K" >&2
+    echo "Usage: $0 [options] ALPHA K" >&2
 }
 
 help() {
@@ -38,14 +38,15 @@ while getopts "dh" o; do
 done
 shift $((OPTIND-1))
 
-NAME=$1
-ALPHA=$2
-K=$3
+ALPHA=$1
+K=$2
 
-if [ -z "$NAME" ] || [ -z "$ALPHA" ] || [ -z "$K" ]; then
+if [ -z "$ALPHA" ] || [ -z "$K" ]; then
     usage
     exit 1
 fi
+
+NAME="A${ALPHA}K${K}"
 
 [ -z "$YAGGO" ] && YAGGO=$(which yaggo 2>/dev/null)
 

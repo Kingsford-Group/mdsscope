@@ -5,6 +5,7 @@
 #include <random>
 #include <fstream>
 #include <algorithm>
+#include <array>
 
 // Seed a random generator
 template <typename EngineT, std::size_t StateSize = EngineT::state_size>

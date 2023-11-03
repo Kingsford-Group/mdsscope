@@ -5,7 +5,7 @@
 #include <iostream>
 #include <algorithm>
 
-#include "hongyu_set.hpp"
+#include "mykkeltveit_set.hpp"
 
 #ifndef K
     #error Must define k-mer length K
@@ -56,7 +56,7 @@ complex embed_mer(mer_t m, uint32_t offset, const root_unity_t& roots) {
     return pos;
 }
 
-// Create the Hongyu set. Not optimize at all
+// Create the Mykkeltveit set. Not optimize at all
 std::vector<mer_t> find_mds(const pcr_info_t& pcr_info, unsigned int offset, const root_unity_t& roots) {
     complex pos, prev_pos, in_pos;
     mer_t prev_m, in_set;
@@ -103,7 +103,7 @@ struct repeat {
 };
 
 int main(int argc, char* argv[]) {
-    hongyu_set args(argc, argv);
+    mykkeltveit_set args(argc, argv);
 
     const pcr_info_t pcr_info;
     root_unity_type<mer_ops> root_unity;
