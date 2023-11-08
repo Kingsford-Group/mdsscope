@@ -1,7 +1,19 @@
 # MDSScope
 
 A Minimum Decycling Set (MDS) is a set of k-mers (word of size k) that is unavoidable and of minimum size.
-This code is research code associated with the manuscript "Sketching methods with small window guarantee using minimum decycling sets".
+This code is research code associated with the manuscript ["Sketching methods with small window guarantee using minimum decycling sets"](https://arxiv.org/abs/2311.03592).
+Please cite:
+
+``` bibtex
+@misc{marçais2023sketching,
+      title={Sketching methods with small window guarantee using minimum decycling sets}, 
+      author={Guillaume Marçais and Dan DeBlasio and Carl Kingsford},
+      year={2023},
+      eprint={2311.03592},
+      archivePrefix={arXiv},
+      primaryClass={cs.DS}
+}
+```
 
 # Compiling
 
