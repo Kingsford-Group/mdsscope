@@ -55,11 +55,7 @@ NAME="A${ALPHA}K${K}${SUFFIX}"
 [ -z "$YAGGO" ] && YAGGO=$(which yaggo 2>/dev/null)
 [ -z "$TUP" ] && TUP=$(which tup 2>/dev/null)
 
-echo fuck1
-
 [[ -z "$TUP" || -z "$YAGGO" ]] && { echo "Missing required dependencies: tup and/or yaggo"; false; }
-
-echo fuck2
 
 detect_compiledb() {
   v=$("$TUP" --version | sed -e 's/^tup v\?//' -e 's/-.*$//')
