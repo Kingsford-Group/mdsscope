@@ -8,3 +8,10 @@ description <<~HELP
 
   Output u l^n for each PCR.
 HELP
+
+# Work around a bug with yaggo < 1.5.11: with no options, it generates
+# an invalid class. Define a bogus option.
+option("noop") {
+  description "Does not do anything. Ignore this option"
+  flag; off
+}
