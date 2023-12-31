@@ -1,0 +1,14 @@
+purpose 'Find sketching methods strongly connected components'
+description <<EOS
+To come
+EOS
+
+option('f', 'set') {
+  description 'File with sketch mer set'
+  c_string; typestr 'path'
+}
+
+arg('comp') {
+  description 'component'
+  c_string; multiple
+}
