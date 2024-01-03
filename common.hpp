@@ -59,31 +59,58 @@ std::ostream& operator<<(std::ostream& os, const std::unordered_map<T, V>& map) 
 //     { os << value } -> std::convertible_to<std::ostream &>;
 // };
 
-template<typename C, typename S, typename T = typename C::value_type>
-//requires Streamable<S> && Streamable<T>
-struct join {
+template<typename IT, typename S, typename T = typename IT::value_type>
+struct joinit {
     typedef T value_type;
-    const C& c;
+    const IT it, itend;
     const S& s;
 
-    join(const C& cont, const S& sep)
-        : c(cont)
+    joinit(IT b, const IT e, const S& sep)
+        : it(b)
+        , itend(e)
         , s(sep)
+        {}
+};
+
+template<typename C, typename S, typename T = typename C::value_type>
+//requires Streamable<S> && Streamable<T>
+struct join : public joinit<typename C::const_iterator, S, T> {
+    // typedef T value_type;
+    // const C& c;
+    // const S& s;
+
+    join(const C& cont, const S& sep)
+        : joinit<typename C::const_iterator, S, T>(begin(cont), end(cont), sep)
     {}
 };
 
-template<typename C, typename S, typename T>
-std::ostream& operator<<(std::ostream& os, const join<C, S, T>& j) {
-    auto it = begin(j.c);
-    if(it != end(j.c)) {
+// template<typename C, typename S, typename T>
+// std::ostream& operator<<(std::ostream& os, const join<C, S, T>& j) {
+//     auto it = begin(j.c);
+//     if(it != end(j.c)) {
+//         os << static_cast<T>(*it);
+//         for(++it; it != end(j.c); ++it)
+//             os << j.s << static_cast<T>(*it);
+//     }
+//     return os;
+// }
+
+template<typename IT, typename S, typename T>
+std::ostream& operator<<(std::ostream& os, const joinit<IT, S, T>& j) {
+    auto it = j.it;
+    if(it != j.itend) {
         os << static_cast<T>(*it);
-        for(++it; it != end(j.c); ++it)
+        for(++it; it != j.itend; ++it)
             os << j.s << static_cast<T>(*it);
     }
     return os;
 }
 
+
 template<typename T, typename S, typename C>
 auto joinT(const C& cont, const S& sep) -> join<C, S, T> { return join<C, S, T>(cont, sep); }
+
+template<typename T, typename S, typename IT>
+auto joinitT(IT b, IT e, const S& sep) -> joinit<IT, S, T> { return joinit<IT, S, T>(b, e, sep); }
 
 #endif // COMMON_H_

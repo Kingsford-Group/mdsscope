@@ -1,0 +1,24 @@
+purpose "Fractional set"
+
+option("f", "fraction") {
+  description "Fraction of k-mers to keep"
+  double
+  conflict "size"
+}
+
+option("s", "size") {
+  description "Size of fractional set"
+  uint64
+}
+
+option('i', 'iseed') {
+  description 'Input seed file'
+  typestr 'path'
+  c_string
+}
+
+option('o', 'oseed') {
+  description 'Output seed file'
+  typestr 'path'
+  c_string
+}

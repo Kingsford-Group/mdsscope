@@ -3,7 +3,7 @@ include_rules
 export PKG_CONFIG_PATH
 
 # CXXFLAGS=-O3 -DNDEBUG -Wall -Werror -DHAVE_EXECINFO_H `pkg-config --cflags libxxhash` -pthread
-CXXFLAGS=-Wall -Werror -DHAVE_EXECINFO_H -I$(TUP_VARIANTDIR) -pthread -std=c++17
+CXXFLAGS=-Wall -Werror -DHAVE_EXECINFO_H -I$(TUP_VARIANTDIR) -pthread -std=c++17 -DHAVE_INT128
 LDFLAGS=-pthread
 LDLIBS=
 
@@ -12,7 +12,10 @@ CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA) -std=c++17
 # Library
 
 # Yaggo arg parsing
-YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo fms2mds.yaggo optimize_rem_path_len.yaggo mykkeltveit_set.yaggo find_longest_path.yaggo champarnaud.yaggo
+YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo
+YAGGO_SRCS += fms2mds.yaggo optimize_rem_path_len.yaggo mykkeltveit_set.yaggo find_longest_path.yaggo
+YAGGO_SRCS += champarnaud.yaggo sketch_components.yaggo syncmer_set.yaggo frac_set.yaggo
+
 # YAGGO_BROKEN = random_mds.yaggo random_pcr.yaggo
 : foreach $(YAGGO_SRCS) |> !yaggo |>
 
@@ -75,3 +78,16 @@ LP_SRCS = find_longest_path.cc
 CH_SRCS = champarnaud.cc
 : foreach $(CH_SRCS) | champarnaud.hpp |> !cxx |> {ch_objs}
 : {ch_objs} {common_objs} |> !lxxd |> champarnaud_set
+
+# Strongly connected components of a sketching method
+SCC_SRCS = sketch_components.cc
+: foreach $(SCC_SRCS) | sketch_components.hpp |> !cxx |> {scc_objs}
+: {scc_objs} {common_objs} |> !lxxd |> sketch_components
+
+SY_SRCS = syncmer_set.cc
+: foreach $(SY_SRCS) | syncmer_set.hpp |> !cxx |> {sy_objs}
+: {sy_objs} {common_objs} |> !lxxd |> syncmer_set
+
+FS_SRCS = frac_set.cc
+: foreach $(FS_SRCS) | frac_set.hpp |> !cxx |> {fs_objs}
+: {fs_objs} {common_objs} |> !lxxd |> frac_set

@@ -149,6 +149,19 @@ struct mer_op_type {
             w += left % alpha;
         return w;
     }
+
+    static mer_t reverse_comp(const mer_t m) {
+        mer_t res = 0;
+        mer_t left = m;
+        for(unsigned int i = 0; i < k; ++i, left /= alpha) {
+            res = (res * alpha) + (alpha - 1 - (left % alpha));
+        }
+        return res;
+    }
+
+    static mer_t canonical(const mer_t m) {
+        return std::min(m, reverse_comp(m));
+    }
 };
 
 #endif // MER_OP_H
