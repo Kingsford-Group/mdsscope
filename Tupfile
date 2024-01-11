@@ -9,85 +9,13 @@ LDLIBS=
 
 CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA) -std=c++17
 
-# Library
-
-# Yaggo arg parsing
-YAGGO_SRCS = traverse_comp.yaggo greedy_mds.yaggo mdss2dot.yaggo comp2rankdot.yaggo
-YAGGO_SRCS += fms2mds.yaggo optimize_rem_path_len.yaggo mykkeltveit_set.yaggo find_longest_path.yaggo
-YAGGO_SRCS += champarnaud.yaggo sketch_components.yaggo syncmer_set.yaggo frac_set.yaggo
-
-# YAGGO_BROKEN = random_mds.yaggo random_pcr.yaggo
-: foreach $(YAGGO_SRCS) |> !yaggo |>
-
 # Common
 COMMON_SRCS = backtrace.cc common.cc
 : foreach $(COMMON_SRCS) |> !cxx |> {common_objs}
+: {common_objs} |> !ar |> common.ar
 
-# traverse_components
-TC_SRCS = traverse_comp_main.cc
-: foreach $(TC_SRCS) | traverse_comp.hpp |> !cxx |> {tc_objs}
-: {tc_objs} {common_objs} |> !lxxd |> traverse_components
+PROGS = traverse_comp greedy_mds mdss2dot comp2rankdot
+PROGS += fms2mds optimize_rem_path_len mykkeltveit_set find_longest_path
+PROGS += champarnaud sketch_components syncmer_set syncmer_sketch frac_set
+run ./rules.sh $(PROGS)
 
-# Greedy generation of MDS
-GG_SRCS = greedy_mds_main.cc
-: foreach $(GG_SRCS) | greedy_mds.hpp |> !cxx |> {gg_objs}
-: {gg_objs} {common_objs} |> !lxxd |> greedy_mds
-
-# Generate dot graph from MDS list
-GD_SRCS = mdss2dot.cc
-: foreach $(GD_SRCS) | mdss2dot.hpp |> !cxx |> {gd_objs}
-: {gd_objs} {common_objs} |> !lxxd |> mdss2dot
-
-# Generate dot file for 1 component, with rank for proper plotting
-CR_SRCS = comp2rankdot.cc
-: foreach $(CR_SRCS) | comp2rankdot.hpp |> !cxx |> {cr_objs}
-: {cr_objs} {common_objs} |> !lxxd |> comp2rankdot
-
-# Transform list of FMs to an MDS
-FM_SRCS = fms2mds.cc
-: foreach $(FM_SRCS) | fms2mds.hpp |> !cxx |> {fm_objs}
-: {fm_objs} {common_objs} |> !lxxd |> fms2mds
-
-# Optimize remaining path length
-OL_SRCS = optimize_rem_path_len.cc
-: foreach $(OL_SRCS) | optimize_rem_path_len.hpp |> !cxx |> {ol_objs}
-: {ol_objs} {common_objs} |> !lxxd |> optimize_rem_path_len
-
-# Mykkeltveit set
-HS_SRCS = mykkeltveit_set.cc
-: foreach $(HS_SRCS) | mykkeltveit_set.hpp |> !cxx |> {hs_objs}
-: {hs_objs} {common_objs} |> !lxxd |> mykkeltveit_set
-
-# Longest path
-LP_SRCS = find_longest_path.cc
-: foreach $(LP_SRCS) | find_longest_path.hpp |> !cxx |> {lp_objs}
-: {lp_objs} {common_objs} |> !lxxd |> longest_path
-
-# BROKEN
-# # Random MDS
-# RM_SRCS = random_mds.cc
-# : foreach $(RM_SRCS) | random_mds.hpp |> !cxx |> {rm_objs}
-# : {rm_objs} {common_objs} |> !lxxd |> random_mds
-
-# # Random PCR to MDS
-# RP_SRCS = random_pcr.cc
-# : foreach $(RP_SRCS) | random_pcr.hpp |> !cxx |> {rp_objs}
-# : {rp_objs} {common_objs} |> !lxxd |> random_pcr
-
-# Champarnaud set
-CH_SRCS = champarnaud.cc
-: foreach $(CH_SRCS) | champarnaud.hpp |> !cxx |> {ch_objs}
-: {ch_objs} {common_objs} |> !lxxd |> champarnaud_set
-
-# Strongly connected components of a sketching method
-SCC_SRCS = sketch_components.cc
-: foreach $(SCC_SRCS) | sketch_components.hpp |> !cxx |> {scc_objs}
-: {scc_objs} {common_objs} |> !lxxd |> sketch_components
-
-SY_SRCS = syncmer_set.cc
-: foreach $(SY_SRCS) | syncmer_set.hpp |> !cxx |> {sy_objs}
-: {sy_objs} {common_objs} |> !lxxd |> syncmer_set
-
-FS_SRCS = frac_set.cc
-: foreach $(FS_SRCS) | frac_set.hpp |> !cxx |> {fs_objs}
-: {fs_objs} {common_objs} |> !lxxd |> frac_set

@@ -9,6 +9,9 @@ else
   !yaggo = |> ^ YAGGO %f^ $(YAGGO) %f -o %o |> %B.hpp
 endif  
 
+!ar = |> ^ AR    %o^ $(AR) sruv $(ARFLAGS) @(ARFLAGS) $(ARFLAGS_%B) %o %f |>
+
+
 # Default variables
 ifdef CXX
   CXX = @(CXX)
@@ -20,6 +23,12 @@ ifdef YAGGO
   YAGGO = @(YAGGO)
 else
   YAGGO = yaggo
+endif
+
+ifdef AR
+  AR = @(AR)
+else
+  AR = ar
 endif
 
 TOPDIR=$(TUP_CWD)
