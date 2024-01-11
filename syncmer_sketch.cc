@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
 	mer_t mer = 0;
 	size_t offset = 0;
 	translated_stream ts(args.alphabet_arg, mer_ops::k, std::cin);
-	// Read first s-1 bases
+	// Read first k-1 bases
 	while(offset + 1 < mer_ops::k && ts >> inchar) {
 		mer = mer_ops::nmer(mer, inchar);
 		// std::cout << "s-mer " << (size_t)inchar << ' ' << (size_t)mer << '\n';

@@ -17,6 +17,6 @@ COMMON_SRCS = backtrace.cc common.cc sequence.cc
 PROGS = traverse_comp greedy_mds mdss2dot comp2rankdot
 PROGS += fms2mds optimize_rem_path_len mykkeltveit_set find_longest_path
 PROGS += champarnaud sketch_components syncmer_set syncmer_sketch frac_set
-PROGS += create_seed
+PROGS += create_seed sketch_histo
 run ./rules.sh $(PROGS)
 

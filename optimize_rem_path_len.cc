@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     element<mer_ops> current, best;
     std::vector<mer_t> fms;
 
-    const auto start(args.mds_given ? read_mds_from_file<mer_t>(args.mds_arg) : mds_from_arg<mer_t>(args.comp_arg));
+    const auto start(args.mds_given ? mds_from_file<mer_t>(args.mds_arg) : mds_from_arg<mer_t>(args.comp_arg));
     mds_op.from_mds_fms(start, current.bmds, current.fms);
     mds_op.mds2fmoves(start);
     current.fmoves = mds_op.fmoves;

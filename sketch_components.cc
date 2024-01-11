@@ -28,7 +28,7 @@ typedef mer_ops::mer_t mer_t;
 
 
 std::pair<std::unordered_set<mer_t>, mer_t> read_set(const sketch_components& args) {
-	const auto mers = args.set_given ? read_mds_from_file<mer_t>(args.set_arg) : mds_from_arg<mer_t>(args.comp_arg);
+	const auto mers = args.set_given ? mds_from_file<mer_t>(args.set_arg) : mds_from_arg<mer_t>(args.comp_arg);
 	std::unordered_set<mer_t> set;
 	mer_t size = 0;
 	for(const auto m : mers) {

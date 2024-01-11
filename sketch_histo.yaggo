@@ -1,0 +1,27 @@
+purpose 'Sketch a sequence given a context free / set scheme'
+description <<HELP
+
+Boils down to the intersection of k-mers in the set and in the sequence.
+Sequence is read from stdin, set from -f or command line arguments.
+
+HELP
+
+option('a', 'alphabet') {
+  description 'Alphabet translation'
+  c_string
+}
+
+option('f', 'sketch-file') {
+  description 'File with sketch mer set'
+  c_string; typestr 'path'
+}
+
+option('s', 'sketch') {
+  description 'k-mers'
+  c_string; multiple
+}
+
+option('c', 'canonical') {
+  description 'Use canonical k-mers'
+  flag; off
+}

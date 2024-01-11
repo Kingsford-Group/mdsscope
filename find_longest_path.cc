@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     find_longest_path args(argc, argv);
     longest_path lp;
 
-    const auto mds = args.mds_given ? read_mds_from_file<mer_t>(args.mds_arg) : mds_from_arg<mer_t>(args.comp_arg);
+    const auto mds = args.mds_given ? mds_from_file<mer_t>(args.mds_arg) : mds_from_arg<mer_t>(args.comp_arg);
     std::cout << (size_t)lp.longest_path(mds) << '\n';
 
     return EXIT_SUCCESS;

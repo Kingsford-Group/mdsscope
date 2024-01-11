@@ -19,14 +19,6 @@
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
 
-constexpr mer_t nb_necklace() {
-	mer_t res = 0;
-	for(unsigned i = 1; i <= mer_ops::k; ++i) {
-		res += ipow(mer_ops::alpha, std::gcd(i, mer_ops::k));
-	}
-	return res / mer_ops::k;
-}
-
 int main(int argc, char* argv[]) {
 	frac_set args(argc, argv);
 
@@ -44,7 +36,7 @@ int main(int argc, char* argv[]) {
 		}
 		set_size = args.size_arg;
 	} else {
-		set_size = nb_necklace();
+		set_size = mer_ops::nb_necklaces;
 	}
 	std::cerr << "size " << set_size << '\n';
 
