@@ -10,7 +10,7 @@ LDLIBS=
 CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA) -std=c++17
 
 # Common
-COMMON_SRCS = backtrace.cc common.cc
+COMMON_SRCS = backtrace.cc common.cc sequence.cc
 : foreach $(COMMON_SRCS) |> !cxx |> {common_objs}
 : {common_objs} |> !ar |> common.ar
 
