@@ -20,6 +20,7 @@
 #define __JELLYFISH_DIVISOR_HPP__
 
 #include <stdint.h>
+#include <iostream>
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif

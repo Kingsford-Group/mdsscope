@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <cstdint>
 #include <limits>
+#include <algorithm>
 
 // Number of bits to encode a^k
 constexpr unsigned int log2ak(unsigned int a, unsigned k) {

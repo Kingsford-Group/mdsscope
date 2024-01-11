@@ -1,0 +1,7 @@
+purpose 'Create a random seed file'
+
+arg('seed') {
+  description 'Output seed file'
+  c_string
+  typestr 'path'
+}

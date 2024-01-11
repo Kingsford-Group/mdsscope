@@ -2,6 +2,7 @@
 #include "syncmer_set.hpp"
 #include "random_seed.hpp"
 #include "divisor.hpp"
+#include "syncmer.hpp"
 
 #ifndef K
     #error Must define k-mer length K
@@ -16,19 +17,6 @@
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
 
-unsigned min_smer(mer_t m, unsigned s, const std::vector<mer_t>& smer_order, const jflib::divisor64& div_s) {
-	unsigned min = 0;
-	mer_t min_val = smer_order[m % div_s];
-	m /= mer_ops::alpha;
-	for(unsigned i = 1; i < mer_ops::k - s + 1; ++i, m /= mer_ops::alpha) {
-		mer_t smer = smer_order[m % div_s];
-		if(smer < min_val) {
-			min = i;
-			min_val = smer;
-		}
-	}
-	return min;
-}
 
 
 int main(int argc, char* argv[]) {
@@ -48,7 +36,7 @@ int main(int argc, char* argv[]) {
 
 	bool first = true;
 	for(mer_t m = 0; m < mer_ops::nb_mers; ++m) {
-		if(min_smer(m, args.s_arg, smer_order, div_s) == args.t_arg) {
+		if(min_smer<mer_ops>(m, args.s_arg, smer_order, div_s) == args.t_arg) {
 			if(!first) {
 				std::cout << ',';
 			} else {
