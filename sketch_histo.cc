@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 		const auto it = mer_set.find(args.canonical_flag ? mer_ops::canonical(mer) : mer);
 		// std::cout << mer;
 		if(it != mer_set.end()) {
-		//	std::cout << ' ' << offset << ' ' << prev;
+			// std::cout << ' ' << offset << ' ' << prev;
 			const size_t dist = offset - prev;
 			if(dist >= histo.size())
 				histo.resize(dist + 1, 0);
