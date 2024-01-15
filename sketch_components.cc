@@ -219,9 +219,9 @@ int main(int argc, char* argv[]) {
 	const auto can_res = comp_scc.scc_counts(can_fn);
 	const auto or_res = comp_scc.scc_counts(or_fn);
 
-	std::cout << "f\t" << (size_t)res.first << ',' << (size_t)res.second << '\n'
-			  << "fc\t" << (size_t)can_res.first << ',' << (size_t)can_res.second << '\n'
-			  << "f + frc\t" << (size_t)or_res.first << ',' << (size_t)or_res.second << '\n';
+	std::cout << "s\t" << (size_t)res.first << ',' << (size_t)res.second << '\n'
+			  << "c\t" << (size_t)can_res.first << ',' << (size_t)can_res.second << '\n'
+			  << "u\t" << (size_t)or_res.first << ',' << (size_t)or_res.second << '\n';
 
 	return EXIT_SUCCESS;
 }

@@ -1,0 +1,100 @@
+#! /usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'optparse'
+require 'yaml'
+
+options = {
+  histos: false,
+  sccs: false,
+  threshold: 50,
+}
+parser = OptionParser.new do |o|
+  o.banner = "Usage: #{$PROGRAM_NAME} [options] histo_files"
+
+  o.on('--histos', 'Handle histo files')
+  o.on('--sccs', 'Handle SCC files')
+  o.on("--threshold T", Integer, "Histogram threshold #{options[:threshold]}")
+end
+parser.parse!(into: options)
+
+class Hash
+  def hmap(&block)
+    Hash[self.map {|k, v| block.call(k,v) }]
+  end
+end
+
+def mean_stdev(arr)
+    mean = arr.sum(0.0) / arr.size
+    sum = arr.sum(0.0) { |element| (element - mean) ** 2 }
+    { 'mean' => mean, 'stdev' => arr.size == 1 ? 0.0 : Math.sqrt(sum / (arr.size - 1))}
+end
+
+
+def unmappable(threshold, files)
+  lens = []
+  files.each do |file|
+    File.open(file) do |fd|
+      sum = 0
+      fd.each do |line|
+        line =~ /(\d+)\s+(\d+)/ or next
+        len, nb = $1.to_i, $2.to_i
+        next unless len >= threshold
+        sum += len * nb
+      end
+      lens << sum
+    end
+  end
+  mean_stdev(lens)
+end
+
+def scc_stats(sccs)
+  counts = { 's' => [[], []], 'c' => [[], []], 'u' => [[], []]}
+  sccs.each do |file|
+    File.open(file) do |fd|
+      fd.each do |line|
+        line =~ /^([scu])\s*(\d+),(\d+)/ || next
+        a = counts[$1]
+        a[0] << $2.to_i
+        a[1] << $3.to_i
+      end
+    end
+  end
+  counts.hmap { |k, v|
+    [k, { 'nb' => mean_stdev(v[0]), 'size' => mean_stdev(v[1])}]
+  }
+end
+
+filter = nil
+if options[:histos]
+  filter = /\.histo$/
+elsif options[:sccs]
+  filter = /\.scc$/
+end
+
+datasets = ARGV.grep(filter)
+             .group_by { |path| File.basename(path) =~ /^(.*?)_/ && $1 }
+             .hmap { |ds, files| [ds, files.group_by { |path| File.basename(path) =~ /_(.*?)_set/ && $1 }] }
+
+result = nil
+if options[:histos]
+  result = datasets.hmap do |data_name, sketches|
+    data_res = sketches.hmap do |sketch_name, histos|
+      histos_by_method = histos.group_by { |path| path =~ /_(.)\.histo/ && $1 }
+      stats = histos_by_method.hmap { |method, files|
+        [method, unmappable(options[:threshold], files)]
+      }
+      [sketch_name, stats]
+    end
+    [data_name, data_res]
+  end
+elsif options[:sccs]
+  result = datasets.hmap do |data_name, sketches|
+    data_res = sketches.hmap do |sketch_name, sccs|
+      [sketch_name, scc_stats(sccs)]
+    end
+    [data_name, data_res]
+  end
+end
+
+print(YAML.dump(result))

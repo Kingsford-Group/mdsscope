@@ -25,3 +25,9 @@ option('c', 'canonical') {
   description 'Use canonical k-mers'
   flag; off
 }
+
+option('u', 'union') {
+  description 'Use union of set and reverse complemented set'
+  flag; off
+  conflict 'canonical'
+}

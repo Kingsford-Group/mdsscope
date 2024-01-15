@@ -94,6 +94,7 @@ if [[ ${#FILES[@]} -gt 0 ]]; then
 cat >> "$confFile" <<EOF
 CONFIG_EXP_REPEAT=$REPEAT
 CONFIG_EXP_FILES=${FILES[@]}
+CONFIG_EXP_HISTO_THRESH=50
 EOF
 fi
 

@@ -18,6 +18,20 @@
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
 
+typedef bool (*lookup_fn)(const std::unordered_set<mer_t>& set, mer_t m);
+
+bool straight_set(const std::unordered_set<mer_t>& set, mer_t m) {
+	return set.find(m) != set.end();
+}
+
+bool canonical_set(const std::unordered_set<mer_t>& set, mer_t m) {
+	return set.find(mer_ops::canonical(m)) != set.end();
+}
+
+bool union_set(const std::unordered_set<mer_t>& set, mer_t m) {
+	return (set.find(m) != set.end()) || (set.find(m) != set.end());
+}
+
 int main(int argc, char* argv[]) {
 	sketch_histo args(argc, argv);
 	const auto mer_set = get_mds<std::unordered_set<mer_t>>(args.sketch_file_arg, args.sketch_arg);
@@ -31,14 +45,18 @@ int main(int argc, char* argv[]) {
 	for( ; offset + 1 < mer_ops::k && ts >> inchar; ++offset)
 		mer = mer_ops::nmer(mer, inchar);
 
+	lookup_fn lookup = straight_set;
+	if(args.canonical_flag)
+		lookup = canonical_set;
+	else if(args.union_flag)
+		lookup = union_set;
+
 	std::vector<size_t> histo;
 	size_t prev = 0;
 	offset = 0;
 	while(ts >> inchar) {
 		mer = mer_ops::nmer(mer, inchar);
-		const auto it = mer_set.find(args.canonical_flag ? mer_ops::canonical(mer) : mer);
-		// std::cout << mer;
-		if(it != mer_set.end()) {
+		if(lookup(mer_set, mer)) {
 			// std::cout << ' ' << offset << ' ' << prev;
 			const size_t dist = offset - prev;
 			if(dist >= histo.size())
