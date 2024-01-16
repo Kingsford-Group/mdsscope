@@ -49,52 +49,49 @@ def unmappable(threshold, files)
 end
 
 def scc_stats(sccs)
-  counts = { 's' => [[], []], 'c' => [[], []], 'u' => [[], []]}
+  nb = []
+  size = []
   sccs.each do |file|
     File.open(file) do |fd|
       fd.each do |line|
-        line =~ /^([scu])\s*(\d+),(\d+)/ || next
-        a = counts[$1]
-        a[0] << $2.to_i
-        a[1] << $3.to_i
+        line =~ /^(\d+),(\d+)$/ && break
       end
+      nb << $1.to_i
+      size << $2.to_i
     end
   end
-  counts.hmap { |k, v|
-    [k, { 'nb' => mean_stdev(v[0]), 'size' => mean_stdev(v[1])}]
-  }
+  { 'nb' => mean_stdev(nb), 'size' => mean_stdev(size) }
 end
-
-filter = nil
-if options[:histos]
-  filter = /\.histo$/
-elsif options[:sccs]
-  filter = /\.scc$/
-end
-
-datasets = ARGV.grep(filter)
-             .group_by { |path| File.basename(path) =~ /^(.*?)_/ && $1 }
-             .hmap { |ds, files| [ds, files.group_by { |path| File.basename(path) =~ /_(.*?)_set/ && $1 }] }
 
 result = nil
 if options[:histos]
+  filter = /\.histo$/
+  datasets = ARGV.grep(filter)
+             .group_by { |path| File.basename(path) =~ /^(.*?)_/ && $1 }
+             .hmap { |ds, files| [ds, files.group_by { |path| File.basename(path) =~ /_(.*?)_set/ && $1 }] }
   result = datasets.hmap do |data_name, sketches|
-    data_res = sketches.hmap do |sketch_name, histos|
-      histos_by_method = histos.group_by { |path| path =~ /_(.)\.histo/ && $1 }
-      stats = histos_by_method.hmap { |method, files|
-        [method, unmappable(options[:threshold], files)]
+    data_res = sketches.hmap do |sketch_name, files|
+      by_method = files.group_by { |path| path =~ /_(.)\..*?$/ && $1 }
+      stats = by_method.hmap { |method, files|
+        res = unmappable(options[:threshold], files)
+        [method, res]
       }
       [sketch_name, stats]
     end
     [data_name, data_res]
   end
 elsif options[:sccs]
-  result = datasets.hmap do |data_name, sketches|
-    data_res = sketches.hmap do |sketch_name, sccs|
-      [sketch_name, scc_stats(sccs)]
-    end
-    [data_name, data_res]
-  end
+  filter = /\.scc$/
+  by_sketches = ARGV.grep(filter)
+               .group_by { |path| File.basename(path) =~ /^(.*?)_set/ && $1 }
+  result = by_sketches.hmap { |sketch_name, files|
+      by_method = files.group_by { |path| path =~ /_(.)\..*?$/ && $1 }
+      stats = by_method.hmap { |method, files|
+        res = scc_stats(files)
+        [method, res]
+      }
+      [sketch_name, stats]
+  }
 end
 
 print(YAML.dump(result))

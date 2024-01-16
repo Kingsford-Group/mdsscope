@@ -16,18 +16,25 @@ option('f', 'sketch-file') {
   c_string; typestr 'path'
 }
 
-option('s', 'sketch') {
-  description 'k-mers'
-  c_string; multiple
+option('s', 'straight') {
+  description 'Use set directly (default)'
+  flag; off
+  conflict 'canonical', 'union'
 }
 
 option('c', 'canonical') {
   description 'Use canonical k-mers'
   flag; off
+  conflict 'straight', 'union'
 }
 
 option('u', 'union') {
   description 'Use union of set and reverse complemented set'
   flag; off
-  conflict 'canonical'
+  conflict 'straight', 'canonical'
+}
+
+arg('sketch') {
+  description 'k-mers'
+  c_string; multiple
 }

@@ -11,26 +11,35 @@ for i in $(seq 1 $REPEAT); do
 done
 
 sets=("mykkeltveit_set" "champarnaud_set")
+for f in "${sets[@]}"; do
+    for switch in s c u; do
+        echo ": foreach ${@} | ${f} ../sketch_components |> %2i -f %1i -${switch} > %o |> ${f}_${switch}.scc {all_sccs}"
+    done
+done
+
 frac=$(bc <<< "scale=5; 1 / ($K - $S + 1)")
 for i in $(seq 1 $REPEAT); do
     for t in 0 1 $((K/2)); do
         f="syncmer_${t}_set_i${i}"
         echo ": ../syncmer_set | seed_${i} |> %f -i %1i -s 3 -t ${t} > %o |> ${f}"
+        for switch in s c u; do
+            echo ": foreach ${@} | ${f} ../sketch_components |> %2i -f %1i -${switch} > %o |> ${f}_${switch}.scc {all_sccs}"
+        done
         sets+=($f)
     done
 
     f="frac_set_i${i}"
     echo ": ../frac_set | seed_${i} |> %f -i %1i -f ${frac} > %o |> ${f}"
     sets+=($f)
+    for switch in s c u; do
+        echo ": foreach ${@} | ${f} ../sketch_components |> %2i -f %1i -${switch} > %o |> ${f}_${switch}.scc {all_sccs}"
+    done
 done
 
 for f in "${sets[@]}"; do
-    cat <<EOF
-: foreach ${@} | ${f} ../sketch_histo |> %2i -a ACGT -f %1i < %f > %o |> %B_${f}_s.histo {all_histos}
-: foreach ${@} | ${f} ../sketch_histo |> %2i -a ACGT -f %1i -c < %f > %o |> %B_${f}_c.histo {all_histos}
-: foreach ${@} | ${f} ../sketch_histo |> %2i -a ACGT -f %1i -u < %f > %o |> %B_${f}_u.histo {all_histos}
-: foreach ${@} | ${f} ../sketch_components |> %2i -f %1i > %o |> %B_${f}.scc {all_sccs}
-EOF
+    for switch in s c u; do
+        echo ": foreach ${@} | ${f} ../sketch_histo |> %2i -a ACGT -f %1i -${switch} < %f > %o |> %B_${f}_${switch}.histo {all_histos}"
+    done
 done
 
 echo ": {all_histos} |> ./compute_stats --histos %f > %o 2>&1 |> histos"

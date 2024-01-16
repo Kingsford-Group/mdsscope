@@ -2,16 +2,21 @@
 // strongly connected components of the de Bruijn graph minus the set of
 // selected k-mers.
 
+#include <iostream>
+#include <iomanip>
 #include <unordered_set>
 #include <vector>
 #include <stack>
 #include <utility>
 #include <algorithm>
 #include <cassert>
-#include <cstddef> // for std::ptrdiff_t
+#include <cstddef>
+#include <memory>
+
 #include "misc.hpp"
 #include "common.hpp"
 #include "sketch_components.hpp"
+#include "progressbar.hpp"
 
 #ifndef K
     #error Must define k-mer length K
@@ -25,17 +30,6 @@
 
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
-
-
-std::pair<std::unordered_set<mer_t>, mer_t> read_set(const sketch_components& args) {
-	const auto mers = args.set_given ? mds_from_file<mer_t>(args.set_arg) : mds_from_arg<mer_t>(args.comp_arg);
-	std::unordered_set<mer_t> set;
-	mer_t size = 0;
-	for(const auto m : mers) {
-		if(set.insert(m).second) ++size;
-	}
-	return std::make_pair(set, size);
-}
 
 // Function checking if a mer is in the set of selecting mers.
 typedef bool (*in_set_fn)(mer_t);
@@ -55,12 +49,14 @@ struct tarjan_scc {
 	, onstack(mer_ops::nb_mers, false)
 		{}
 
+	static void noprogress(mer_t m) { }
+
 	// Find strongly connected component in the de Bruijn graph minus a set. The
 	// set is given by the indicator function `fn`. For each component, call
 	// `new_scc(scc_index)` and then call `new_node(m)` for all the mers in the
 	// component.
-	template<typename Fn, typename E1, typename E2>
-	void scc_iterate(Fn fn, E1 new_scc, E2 new_node) {
+	template<typename Fn, typename E1, typename E2, typename E3>
+	void scc_iterate(Fn fn, E1 new_scc, E2 new_node, E3 new_visit = noprogress) {
 		std::fill(index.begin(), index.end(), undefined);
 		std::fill(lowlink.begin(), lowlink.end(), undefined);
 		std::fill(onstack.begin(), onstack.end(), false);
@@ -71,34 +67,34 @@ struct tarjan_scc {
 
 		for(mer_t m = 0; m < mer_ops::nb_mers; ++m) {
 			if(index[m] == undefined && !fn(m))
-				strong_connect(fn, m, new_scc, new_node);
+				strong_connect(fn, m, new_scc, new_node, new_visit);
 		}
 	}
 
-	template<typename Fn>
-	std::vector<std::vector<mer_t>> scc_components(Fn fn) {
+	template<typename Fn, typename E3>
+	std::vector<std::vector<mer_t>> scc_components(Fn fn, E3 new_visit = noprogress) {
 		std::vector<std::vector<mer_t>> res;
 		auto new_scc = [&res](mer_t index) { res.emplace_back(); };
 		auto new_node = [&res](mer_t m) { res.back().push_back(m); };
-		scc_iterate(fn, new_scc, new_node);
+		scc_iterate(fn, new_scc, new_node, new_visit);
 		return res;
 	}
 
-	template<typename Fn>
-	std::pair<mer_t, mer_t> scc_counts(Fn fn) {
+	template<typename Fn, typename E3>
+	std::pair<mer_t, mer_t> scc_counts(Fn fn, E3 new_visit = noprogress) {
 		mer_t nb_scc = 0, nb_mers = 0;
 		auto new_scc = [&nb_scc](mer_t index) { ++nb_scc; };
 		auto new_mer = [&nb_mers](mer_t m) { ++nb_mers; };
-		scc_iterate(fn, new_scc, new_mer);
+		scc_iterate(fn, new_scc, new_mer, new_visit);
 		return std::make_pair(nb_scc, nb_mers);
 	}
 
-	template<typename Fn>
-	std::pair<mer_t, mer_t> scc_append(Fn fn, std::vector<mer_t>& mers) {
+	template<typename Fn, typename E3>
+	std::pair<mer_t, mer_t> scc_append(Fn fn, std::vector<mer_t>& mers, E3 new_visit = noprogress) {
 		mer_t nb_scc = 0, nb_mers = 0;
 		auto new_scc = [&nb_scc](mer_t index) { ++nb_scc; };
 		auto new_mer = [&](mer_t m) { ++nb_mers; mers.push_back(m); };
-		scc_iterate(fn, new_scc, new_mer);
+		scc_iterate(fn, new_scc, new_mer, new_visit);
 		return std::make_pair(nb_scc, nb_mers);
 	}
 
@@ -106,8 +102,9 @@ private:
 	// Non-recursive implementation of Tarjan algorithm to find SCCs. Calls
 	// new_scc upon finding a new SCC, and then calls new_node for each node in
 	// that SCC.
-	template<typename Fn, typename E1, typename E2>
-	inline void strong_connect(Fn fn, mer_t m, E1 new_scc, E2 new_node) {
+	template<typename Fn, typename E1, typename E2, typename E3>
+	inline void strong_connect(Fn fn, mer_t m, E1 new_scc, E2 new_node, E3 new_visit) {
+		new_visit(m);
 		index[m] = current;
 		lowlink[m] = current;
 		++current;
@@ -126,6 +123,7 @@ private:
 
 				if(index[nmer] == undefined) {
 					// Explore neighbor: push stack
+					new_visit(m);
 					index[nmer] = current;
 					lowlink[nmer] = current;
 					++current;
@@ -177,74 +175,51 @@ struct can_is_in_set {
 	bool operator()(mer_t m) const { return set.find(mer_ops::canonical(m)) != set.cend(); }
 };
 
-struct mer_or_rc_in_set {
+struct is_in_union {
 	const std::unordered_set<mer_t>& set;
-	mer_or_rc_in_set(const std::unordered_set<mer_t>& s) : set(s) {}
+	is_in_union(const std::unordered_set<mer_t>& s) : set(s) {}
 	bool operator()(mer_t m) const { return set.find(m) != set.cend() || set.find(mer_ops::reverse_comp(m)) != set.cend(); }
 };
 
-// // Transform a set into a "canonical set" based on whether PCRs are contained
-// // within the k-nonical space or not.
-// std::unordered_set<mer_t> mixed_pcr_transform(const std::unordered_set<mer_t>& set) {
-// 	std::cout << "input " << joinT<size_t>(set, ',') << '\n';
-// 	std::unordered_set<mer_t> res;
-
-// 	for(mer_t m : set) {
-// 		mer_t rcm = mer_ops::reverse_comp(m);
-// 		unsigned char pcr_type = 0; // first bit: in k-nonical, second bit: in rc
-// 		pcr_type |= (m < rcm) ? 0x1 : ((m > rcm) ? 0x2 : 0x3) ;
-
-// 		mer_t cur = mer_ops::nmer(m);
-// 		mer_t rcc = mer_ops::pmer(rcm);
-// 		for( ; cur != m && pcr_type != 0x3; cur = mer_ops::nmer(cur), rcc = mer_ops::pmer(rcc)) {
-// 			pcr_type |= (cur < rcc) ? 0x1 : ((cur > rcc) ? 0x2 : 0x3);
-// 			std::cout << '\t' << (size_t)cur << ' ' << (size_t)rcc << ' ' << (size_t)pcr_type << '\n';
-// 		}
-// 		std::cout << "mer " << (size_t)m << ' ' << (size_t)rcm << ' ' << (size_t)pcr_type << '\n';
-// 		switch(pcr_type) {
-// 		case 0x1: // All in k-nonical
-// 			std::cout << "insert " << (size_t)m << '\n';
-// 			res.insert(m);
-// 			break; //
-// 		case 0x3: // Mixed PCR
-// 			std::cout << "insert " << (size_t)std::min(m, rcm) << '\n';
-// 			res.insert(std::min(m, rcm));
-// 			break;
-// 		default:
-// 			// All in rc: do nothing
-// 			std::cout << "nothing\n";
-// 			break;
-// 		}
-// 	}
-// 	std::cout << "res " << joinT<size_t>(res, ',') << '\n';
-// 	return res;
-// }
-
-// Symmetrize a set. Well defined from MDSs. Not so sure about other sets
-std::unordered_set<mer_t> symmetrize(const std::unordered_set<mer_t>& set) {
-	std::unordered_set<mer_t> res;
-
-
-
-	return res;
-}
-
 int main(int argc, char* argv[]) {
 	sketch_components args(argc, argv);
-	const auto mer_set = read_set(args);
+	const auto mer_set = get_mds<std::unordered_set<mer_t>>(args.sketch_file_arg, args.sketch_arg);
 
-	const is_in_set set_fn(mer_set.first);
-	const can_is_in_set can_fn(mer_set.first);
-	const mer_or_rc_in_set or_fn(mer_set.first);
+	mer_t components = 0, in_components = 0, visited = 0;
+	size_t updates = 0;
+	auto progress = [&]() {
+		if(args.progress_flag) {
+			if(updates % 1024 == 0) {
+				std::cerr << '\r'
+						  << "comps " << std::setw(10) << components
+						  << " in_comps " << std::setw(10) << in_components
+						  << " visited " << std::setw(10) << visited
+						  << ' ' << std::setw(5) << std::fixed << std::setprecision(1) << (100.0 * (double)visited / mer_ops::nb_mers) << '%'
+						  << std::flush;
+			}
+			++updates;
+		}
+	};
+	auto new_scc = [&components,&progress](mer_t m) { ++components; progress(); };
+	auto new_node = [&in_components,&progress](mer_t m) { ++in_components; progress(); };
+	auto new_visit = [&visited,&progress](mer_t m) { ++visited; progress(); };
 
 	tarjan_scc comp_scc;
-	const auto res = comp_scc.scc_counts(set_fn);
-	const auto can_res = comp_scc.scc_counts(can_fn);
-	const auto or_res = comp_scc.scc_counts(or_fn);
+	if(args.canonical_flag) {
+		const can_is_in_set can_fn(mer_set);
+		comp_scc.scc_iterate(can_fn, new_scc, new_node, new_visit);
+	} else if(args.union_flag) {
+		const is_in_union union_fn(mer_set);
+		comp_scc.scc_iterate(union_fn, new_scc, new_node, new_visit);
+	} else {
+		const is_in_set set_fn(mer_set);
+		comp_scc.scc_iterate(set_fn, new_scc, new_node, new_visit);
+	}
 
-	std::cout << "s\t" << (size_t)res.first << ',' << (size_t)res.second << '\n'
-			  << "c\t" << (size_t)can_res.first << ',' << (size_t)can_res.second << '\n'
-			  << "u\t" << (size_t)or_res.first << ',' << (size_t)or_res.second << '\n';
+	if(args.progress_flag)
+		std::cerr << std::endl;
+
+	std::cout << components << ',' << in_components << '\n';
 
 	return EXIT_SUCCESS;
 }
