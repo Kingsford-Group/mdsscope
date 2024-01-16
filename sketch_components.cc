@@ -47,6 +47,7 @@ struct tarjan_scc {
 	std::vector<mer_t> index;
 	std::vector<mer_t> lowlink;
 	std::vector<bool> onstack;
+	std::vector<std::pair<mer_t,unsigned>> callstack; // To linearize algorithm
 
 	tarjan_scc()
 	: index(mer_ops::nb_mers, undefined)
@@ -102,39 +103,61 @@ struct tarjan_scc {
 	}
 
 private:
+	// Non-recursive implementation of Tarjan algorithm to find SCCs. Calls
+	// new_scc upon finding a new SCC, and then calls new_node for each node in
+	// that SCC.
 	template<typename Fn, typename E1, typename E2>
-	void strong_connect(Fn fn, mer_t m, E1 new_scc, E2 new_node) {
+	inline void strong_connect(Fn fn, mer_t m, E1 new_scc, E2 new_node) {
 		index[m] = current;
 		lowlink[m] = current;
 		++current;
 		stack.push_back(m);
 		onstack[m] = true;
+		callstack.emplace_back(m, 0);
 
-		for(mer_t b = 0; b < mer_ops::alpha; ++b) {
-			mer_t nmer = mer_ops::nmer(m, b);
-			if(fn(nmer)) continue;
+		unsigned b;
+		while(!callstack.empty()) {
+			std::tie(m, b) = callstack.back();
+			if(b < mer_ops::alpha) {
+				// Still edges to explore
+				++callstack.back().second;
+				const mer_t nmer = mer_ops::nmer(m, b);
+				if(fn(nmer)) continue;
 
-			if(index[nmer] == undefined) {
-				strong_connect(fn, nmer, new_scc, new_node);
-				lowlink[m] = std::min(lowlink[m], lowlink[nmer]);
-			} else if(onstack[nmer]) {
-				lowlink[m] = std::min(lowlink[m], index[nmer]);
-			}
-		}
-
-		if(lowlink[m] == index[m]) {
-			// A single node is not an SCC, unless has a self loop (homopolymers)
-			if(stack.back() == m && !mer_ops::is_homopolymer(m)) {
-				onstack[m] = false;
-				stack.pop_back();
+				if(index[nmer] == undefined) {
+					// Explore neighbor: push stack
+					index[nmer] = current;
+					lowlink[nmer] = current;
+					++current;
+					stack.push_back(nmer);
+					onstack[nmer] = true;
+					callstack.emplace_back(nmer, 0);
+				} else if(onstack[nmer]) {
+					lowlink[m] = std::min(lowlink[m], index[nmer]);
+				}
 			} else {
-				new_scc(scc_index++);
-				while(true) {
-					const auto mm = stack.back();
-					stack.pop_back();
-					onstack[mm] = false;
-					new_node(mm);
-					if(mm == m) break;
+				if(lowlink[m] == index[m]) {
+					// A single node is not an SCC, unless has a self loop (homopolymers)
+					if(stack.back() == m && !mer_ops::is_homopolymer(m)) {
+						onstack[m] = false;
+						stack.pop_back();
+					} else {
+						new_scc(scc_index++);
+						while(true) {
+							const auto mm = stack.back();
+							stack.pop_back();
+							onstack[mm] = false;
+							new_node(mm);
+							if(mm == m) break;
+						}
+					}
+				}
+				// Pop callstack
+				callstack.pop_back();
+				if(!callstack.empty()) {
+					std::tie(m, b) = callstack.back();
+					mer_t nmer = mer_ops::nmer(m, b-1); // Value of nmer when pushed to callstack
+					lowlink[m] = std::min(lowlink[m], lowlink[nmer]);
 				}
 			}
 		}
