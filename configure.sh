@@ -30,6 +30,7 @@ Options:
   -j          Force ^j^ flag to create compiledb
   -r          Number of repeats
   -f          Testing sequence file
+  -n          Dry run
   -h          Help
 EOF
 }
@@ -39,14 +40,18 @@ SUFFIX=
 COMPILEDB=
 REPEAT=1
 FILES=()
+DRYRUN=
+ILP=
 
-while getopts "djr:f:h" o; do
+while getopts "djr:f:inh" o; do
     case "${o}" in
         (d) OPTFLAGS="-O0 -g"; SUFFIX="-debug" ;;
         (h) help; exit 0 ;;
         (j) COMPILEDB=yes ;;
         (r) REPEAT=$OPTARG ;;
-        (f) FILES+=($OPTARG) ; SUFFIX="-exp";;
+        (f) FILES+=("$(realpath $OPTARG)") ; SUFFIX="-exp" ;;
+        (i) ILP=1 ;;
+        (n) DRYRUN=1 ;;
         (*) usage; exit 1 ;;
     esac
 done
@@ -77,9 +82,22 @@ detect_compiledb() {
 
 [ -z "$COMPILEDB" ] && COMPILEDB="$(detect_compiledb)"
 
+# Detect python for ilp_set
+ILPPYTHON=
+if [ -n "$ILP" ]; then
+for p in "$(realpath -s gurobienv/bin/python)" "$(which python3)"; do
+  if [ -x "$p" ] && "$p" MDS-ILP.py -h &> /dev/null; then
+    ILPPYTHON=$p
+    break
+  fi
+done
+  [ -z "$ILPPYTHON" ] && echo >&2 "No ILP: didn't find a satisfying Python interpreter and packages"
+fi
+
 mkdir -p configs
 confFile=configs/${NAME}.config
-cat > "$confFile" <<EOF
+tmpFile=${confFile}.tmp
+cat > "$tmpFile" <<EOF
 CONFIG_ALPHA=$ALPHA
 CONFIG_K=$K
 CONFIG_CXXFLAGS=$OPTFLAGS $CXXFLAGS
@@ -87,16 +105,24 @@ CONFIG_LDFLAGS=$LDFLAGS
 CONFIG_LDLIBS=$LDLIBS
 CONFIG_YAGGO=$YAGGO
 CONFIG_COMPILEDB=$COMPILEDB
+CONFIG_ILP_PYTHON=$ILPPYTHON
 EOF
 
 # Testing
 if [[ ${#FILES[@]} -gt 0 ]]; then
-cat >> "$confFile" <<EOF
+cat >> "$tmpFile" <<EOF
 CONFIG_EXP_REPEAT=$REPEAT
 CONFIG_EXP_FILES=${FILES[@]}
 CONFIG_EXP_HISTO_THRESH=50
 EOF
 fi
 
+if [ -n "$DRYRUN" ]; then
+echo Dryrun. Config:
+cat "$tmpFile"
+rm "$tmpFile"
+exit 0
+fi
 
-"$TUP" variant "configs/${NAME}.config"
+mv -f "$tmpFile" "$confFile"
+[ -d "build-${NAME}" ] || "$TUP" variant "$configFile"

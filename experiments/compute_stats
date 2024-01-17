@@ -27,7 +27,7 @@ end
 def mean_stdev(arr)
     mean = arr.sum(0.0) / arr.size
     sum = arr.sum(0.0) { |element| (element - mean) ** 2 }
-    { 'mean' => mean, 'stdev' => arr.size == 1 ? 0.0 : Math.sqrt(sum / (arr.size - 1))}
+    { 'mean' => mean, 'stdev' => arr.size == 1 ? 0.0 : Math.sqrt(sum / (arr.size - 1)), 'min' => arr.min, 'max' => arr.max }
 end
 
 

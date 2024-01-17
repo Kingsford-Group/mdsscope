@@ -19,3 +19,8 @@ PROGS += fms2mds optimize_rem_path_len mykkeltveit_set find_longest_path
 PROGS += champarnaud_set sketch_components syncmer_set syncmer_sketch frac_set
 PROGS += create_seed sketch_histo
 run ./rules.sh $(PROGS)
+
+# MDS ilp
+ifdef ILP_PYTHON
+: MDS-ILP.py |> echo '#!/bin/bash\nTQDM_DISABLE=1 exec "@(ILP_PYTHON)"' "`realpath %f`" @(ALPHA) @(K) "\$((2*@(K)*@(K)*@(K)))" '"$@"' > %o; chmod a+rx %o |> ilp_set
+endif
