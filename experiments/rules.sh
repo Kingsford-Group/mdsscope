@@ -42,6 +42,3 @@ for f in "${sets[@]}"; do
         echo ": foreach ${@} | ${f} ../sketch_histo |> %2i -a ACGT -f %1i -${switch} < %f > %o |> %B_${f}_${switch}.histo {all_histos}"
     done
 done
-
-echo ": {all_histos} |> ./compute_stats --histos %f > %o 2>&1 |> histos"
-echo ": {all_sccs} |> ./compute_stats --sccs %f > %o 2>&1 |> sccs"

@@ -1,3 +1,5 @@
+include_rules
+
 ifdef EXP_FILES
 : foreach ../mykkeltveit_set ../champarnaud_set |> %f > %o |> %B
 
@@ -6,4 +8,8 @@ ifdef ILP_PYTHON
 endif
 
 run $(TUP_CWD)/rules.sh @(K) 3 @(EXP_REPEAT) @(EXP_FILES)
+
+: {all_histos} |> ./compute_stats --histos --dir $(TUP_VARIANT_OUTPUTDIR) > %o |> histos
+: {all_sccs} |> ./compute_stats --sccs --dir $(TUP_VARIANT_OUTPUTDIR) > %o |> sccs
+
 endif

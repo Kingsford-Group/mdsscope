@@ -8,12 +8,14 @@ options = {
   histos: false,
   sccs: false,
   threshold: 50,
+  inputs: nil,
 }
 parser = OptionParser.new do |o|
-  o.banner = "Usage: #{$PROGRAM_NAME} [options] histo_files"
+  o.banner = "Usage: #{$PROGRAM_NAME} [options] [histo_files]"
 
-  o.on('--histos', 'Handle histo files')
-  o.on('--sccs', 'Handle SCC files')
+  o.on('--histos', 'Handle histo files (*.histo)')
+  o.on('--sccs', 'Handle SCC files (*.scc)')
+  o.on('--dir DIR', 'Directory to read (cwd)')
   o.on("--threshold T", Integer, "Histogram threshold #{options[:threshold]}")
 end
 parser.parse!(into: options)
@@ -63,12 +65,14 @@ def scc_stats(sccs)
   { 'nb' => mean_stdev(nb), 'size' => mean_stdev(size) }
 end
 
+filter = options[:histos] ? '*.histo' : '*.scc'
+inputs = Dir[File.join(options[:dir], filter)]
+
 result = nil
 if options[:histos]
-  filter = /\.histo$/
-  datasets = ARGV.grep(filter)
-             .group_by { |path| File.basename(path) =~ /^(.*?)_/ && $1 }
-             .hmap { |ds, files| [ds, files.group_by { |path| File.basename(path) =~ /_(.*?)_set/ && $1 }] }
+  datasets = inputs
+               .group_by { |path| File.basename(path) =~ /^(.*?)_/ && $1 }
+               .hmap { |ds, files| [ds, files.group_by { |path| File.basename(path) =~ /_(.*?)_set/ && $1 }] }
   result = datasets.hmap do |data_name, sketches|
     data_res = sketches.hmap do |sketch_name, files|
       by_method = files.group_by { |path| path =~ /_(.)\..*?$/ && $1 }
@@ -81,9 +85,8 @@ if options[:histos]
     [data_name, data_res]
   end
 elsif options[:sccs]
-  filter = /\.scc$/
-  by_sketches = ARGV.grep(filter)
-               .group_by { |path| File.basename(path) =~ /^(.*?)_set/ && $1 }
+  by_sketches = inputs
+                  .group_by { |path| File.basename(path) =~ /^(.*?)_set/ && $1 }
   result = by_sketches.hmap { |sketch_name, files|
       by_method = files.group_by { |path| path =~ /_(.)\..*?$/ && $1 }
       stats = by_method.hmap { |method, files|

@@ -105,8 +105,9 @@ CONFIG_LDFLAGS=$LDFLAGS
 CONFIG_LDLIBS=$LDLIBS
 CONFIG_YAGGO=$YAGGO
 CONFIG_COMPILEDB=$COMPILEDB
-CONFIG_ILP_PYTHON=$ILPPYTHON
 EOF
+
+[ -n "$ILPPYTHON" ] && echo "CONFIG_ILP_PYTHON=${ILPPYTHON}" >> "$tmpFile"
 
 # Testing
 if [[ ${#FILES[@]} -gt 0 ]]; then
@@ -118,11 +119,11 @@ EOF
 fi
 
 if [ -n "$DRYRUN" ]; then
-echo Dryrun. Config:
+echo "Dryrun. Config: ${confFile} ${NAME}"
 cat "$tmpFile"
 rm "$tmpFile"
 exit 0
 fi
 
 mv -f "$tmpFile" "$confFile"
-[ -d "build-${NAME}" ] || "$TUP" variant "$configFile"
+[ -d "build-${NAME}" ] || "$TUP" variant "$confFile"

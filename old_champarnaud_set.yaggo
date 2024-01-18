@@ -11,7 +11,7 @@ HELP
 
 # Work around a bug with yaggo < 1.5.11: with no options, it generates
 # an invalid class. Define a bogus option.
-option("notsorted") {
-  description "Do not sort output"
+option("noop") {
+  description "Does not do anything. Ignore this option"
   flag; off
 }
