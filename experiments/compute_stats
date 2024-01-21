@@ -8,10 +8,10 @@ options = {
   histos: false,
   sccs: false,
   threshold: 50,
-  inputs: nil,
+  dir: '.',
 }
 parser = OptionParser.new do |o|
-  o.banner = "Usage: #{$PROGRAM_NAME} [options] [histo_files]"
+  o.banner = "Usage: #{$PROGRAM_NAME} [options]"
 
   o.on('--histos', 'Handle histo files (*.histo)')
   o.on('--sccs', 'Handle SCC files (*.scc)')
@@ -19,6 +19,7 @@ parser = OptionParser.new do |o|
   o.on("--threshold T", Integer, "Histogram threshold #{options[:threshold]}")
 end
 parser.parse!(into: options)
+abort(parser.banner) unless ARGV.empty?
 
 class Hash
   def hmap(&block)

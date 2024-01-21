@@ -1,8 +1,8 @@
 #!/bin/bash
 
 K=$1
-# S=$2
 S=$((K / 2 - 1))
+ILP_PYTHON=$2
 REPEAT=$3
 shift 3
 
@@ -12,6 +12,7 @@ for i in $(seq 1 $REPEAT); do
 done
 
 sets=("mykkeltveit_set" "champarnaud_set")
+[ -n "$ILP_PYTHON" ] && sets+=("ilp_set")
 for f in "${sets[@]}"; do
     for switch in s c u; do
         echo ": ${f} | ../sketch_components |> %1i -f %f -${switch} > %o |> ${f}_${switch}.scc {all_sccs}"

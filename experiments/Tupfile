@@ -4,10 +4,10 @@ ifdef EXP_FILES
 : foreach ../mykkeltveit_set ../champarnaud_set |> %f > %o |> %B
 
 ifdef ILP_PYTHON
-: ../ilp_set |> %f --sym --out %o |> %B
+: ../MDS-ILP-Compact.py |> @(ILP_PYTHON) %f -o %o @(ALPHA) @(K) @(EXP_HISTO_THRESH) |> ilp_set
 endif
 
-run $(TUP_CWD)/rules.sh @(K) 3 @(EXP_REPEAT) @(EXP_FILES)
+run $(TUP_CWD)/rules.sh @(K) "$(ILP_PYTHON)" @(EXP_REPEAT) @(EXP_FILES)
 
 : {all_histos} |> ./compute_stats --histos --dir $(TUP_VARIANT_OUTPUTDIR) > %o |> histos
 : {all_sccs} |> ./compute_stats --sccs --dir $(TUP_VARIANT_OUTPUTDIR) > %o |> sccs
