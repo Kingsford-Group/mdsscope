@@ -1,0 +1,11 @@
+purpose "Find set one less than union"
+
+option('f', 'sketch-file') {
+  description 'File with sketch mer set'
+  c_string; typestr 'path'
+}
+
+arg('sketch') {
+  description 'k-mers'
+  c_string; multiple
+}

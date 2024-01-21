@@ -53,12 +53,16 @@ struct tarjan_scc {
 	}
 
 	template<typename Fn, typename E3>
-	std::pair<mer_t, mer_t> scc_counts(Fn fn, E3 new_visit = noprogress) {
+	std::pair<mer_t, mer_t> scc_counts(Fn fn, E3 new_visit) {
 		mer_t nb_scc = 0, nb_mers = 0;
 		auto new_scc = [&nb_scc](mer_t index) { ++nb_scc; };
 		auto new_mer = [&nb_mers](mer_t m) { ++nb_mers; };
 		scc_iterate(fn, new_scc, new_mer, new_visit);
 		return std::make_pair(nb_scc, nb_mers);
+	}
+	template<typename Fn>
+	inline std::pair<mer_t, mer_t> scc_counts(Fn fn) {
+		return scc_counts(fn, noprogress);
 	}
 
 	template<typename Fn, typename E3>
