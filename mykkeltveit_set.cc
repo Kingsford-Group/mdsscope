@@ -5,6 +5,7 @@
 #include <iostream>
 #include <algorithm>
 
+#include "mykkeltveit.hpp"
 #include "mykkeltveit_set.hpp"
 
 #ifndef K
@@ -24,40 +25,14 @@
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
 typedef pcr_info_type<mer_ops> pcr_info_t;
-typedef std::complex<double> complex;
 
-const double epsilon = 1e-10;
-
-template<typename mer_ops>
-struct root_unity_type {
-    std::vector<complex> values;
-    root_unity_type() : values(mer_ops::k + 1) {
-        for(unsigned int i = 0; i < (mer_ops::k / 2 + 1); ++i) {
-            const double theta = 2 * i * M_PI / mer_ops::k;
-            values[i] = complex(std::cos(theta), std::sin(theta));
-            if(std::abs(values[i].real()) < epsilon)
-                values[i].real(0.0);
-            if(std::abs(values[i].imag()) < epsilon)
-                values[i].imag(0.0);
-            if(i > 0 && i < mer_ops::k - i) {
-                values[mer_ops::k - i] = std::conj(values[i]);
-            }
-        }
-        values[mer_ops::k] = values[0];
-    }
-};
 typedef root_unity_type<mer_ops> root_unity_t;
-
-complex embed_mer(mer_t m, uint32_t offset, const root_unity_t& roots) {
-    complex pos(0.0, 0.0);
-    for(unsigned int i = 0; i < mer_ops::k; ++i, m /= mer_ops::alpha) {
-        pos += (complex::value_type)mer_ops::rb(m) * roots.values[(mer_ops::k + offset - 1 - i) % mer_ops::k];
-    }
-    return pos;
-}
 
 // Create the Mykkeltveit set. Not optimize at all
 std::vector<mer_t> find_mds(const pcr_info_t& pcr_info, unsigned int offset, const root_unity_t& roots) {
+    typedef root_unity_t::complex complex;
+    const double epsilon = roots.epsilon;
+
     complex pos, prev_pos, in_pos;
     mer_t prev_m, in_set;
     std::vector<mer_t> mds;
@@ -67,7 +42,7 @@ std::vector<mer_t> find_mds(const pcr_info_t& pcr_info, unsigned int offset, con
         in_set = mer_ops::nb_mers;
         in_pos = complex();
         for(const auto m : pcr) {
-            pos = embed_mer(m, offset, roots);
+            pos = roots.embed_mer(m, offset);
             // std::cout << "pcr " << (size_t)pcr[0] << " m " << (size_t)m << ' ' << pos <<  " prev " << (size_t)prev_m << ' ' << prev_pos << " in " << (size_t)in_set << ' ' << in_pos << '\n';
             // if(pcr.size() < mer_ops::k || (pos.real() < -epsilon && abs(pos.imag()) < epsilon)) {
             if(abs(pos) < epsilon || (pos.real() < -epsilon && abs(pos.imag()) < epsilon)) {
@@ -96,6 +71,15 @@ std::vector<mer_t> find_mds(const pcr_info_t& pcr_info, unsigned int offset, con
     return mds;
 }
 
+std::vector<mer_t> brute_force_mds(const pcr_info_t& pcr_info, unsigned int offset, const root_unity_t& roots) {
+    std::vector<mer_t> res;
+    for(mer_t m = 0; m < mer_ops::nb_mers; ++m) {
+        if(roots.in_mykkeltveit_set(m, offset))
+            res.push_back(m);
+    }
+    return res;
+}
+
 // Repeat PCR index and offset
 struct repeat {
     const std::vector<mer_t>& pcr;
@@ -109,7 +93,7 @@ int main(int argc, char* argv[]) {
     root_unity_type<mer_ops> root_unity;
 
     mer_t offset = args.offset_arg;
-    auto mds = find_mds(pcr_info, offset, root_unity);
+    auto mds = !args.brute_flag ? find_mds(pcr_info, offset, root_unity) : brute_force_mds(pcr_info, offset, root_unity);
 
     std::vector<repeat> repeat_pcrs;
     if(args.all_flag || args.range_flag) {

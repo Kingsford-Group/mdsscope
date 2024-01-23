@@ -3,11 +3,11 @@ include_rules
 export PKG_CONFIG_PATH
 
 # CXXFLAGS=-O3 -DNDEBUG -Wall -Werror -DHAVE_EXECINFO_H `pkg-config --cflags libxxhash` -pthread
-CXXFLAGS=-Wall -Werror -DHAVE_EXECINFO_H -I$(TUP_VARIANTDIR) -pthread -std=c++17 -DHAVE_INT128
+CXXFLAGS=-Wall -Werror -DHAVE_EXECINFO_H -I$(TUP_VARIANTDIR) -pthread -std=c++20 -DHAVE_INT128
 LDFLAGS=-pthread
 LDLIBS=
 
-CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA) -std=c++17
+CXXFLAGS += -DK=@(K) -DALPHA=@(ALPHA)
 
 # Common
 COMMON_SRCS = backtrace.cc common.cc sequence.cc

@@ -20,3 +20,8 @@ option('l', 'longest-path') {
   description 'Compute longest path'
   flag; off
 }
+
+option('brute') {
+  description 'Use brute force to create set'
+  flag; off
+}
