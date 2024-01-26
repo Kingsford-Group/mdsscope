@@ -1,0 +1,41 @@
+# frozen_string_literal: false
+
+purpose 'Generate a syncmer sketch'
+
+option('s') {
+  description 's-mer size'
+  uint32
+  required
+}
+option('t') {
+  description 'Position of minimum s-mer'
+  uint32
+  required
+}
+
+option('a', 'alphabet') {
+  description 'Alphabet translation'
+  c_string
+}
+
+option('c', 'canonical') {
+  description 'Canonical space'
+  flag; off
+}
+
+option('i', 'iseed') {
+  description 'Input seed file'
+  typestr 'path'
+  c_string
+}
+
+option('o', 'oseed') {
+  description 'Output seed file'
+  typestr 'path'
+  c_string
+}
+
+option('lex') {
+  description 'Use lexicographic order'
+  flag; off
+}

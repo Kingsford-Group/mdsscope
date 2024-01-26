@@ -6,6 +6,8 @@
 #include <type_traits>
 #include <cstdint>
 #include <limits>
+#include <algorithm>
+#include <numeric>
 
 // Number of bits to encode a^k
 constexpr unsigned int log2ak(unsigned int a, unsigned k) {
@@ -55,6 +57,14 @@ ipow(T base, unsigned int exp) {
     return result;
 }
 
+constexpr size_t nb_necklaces(unsigned a, unsigned k) {
+	size_t res = 0;
+    for(unsigned i = 1; i <= k; ++i) {
+		res += ipow(a, std::gcd(i, k));
+	}
+	return res / k;
+}
+
 template<unsigned int k_, unsigned int alpha_>
 struct mer_op_type {
 //    typedef mer_type mer_t;
@@ -64,6 +74,7 @@ struct mer_op_type {
     constexpr static unsigned int alpha = alpha_;
     constexpr static mer_t nb_mers = ipow((mer_t)alpha, k);
     constexpr static mer_t nb_fmoves = nb_mers / alpha;
+    constexpr static mer_t nb_necklaces = ::nb_necklaces(alpha, k);
 
     // Left base
     static inline mer_t lb(const mer_t m) {
@@ -148,6 +159,19 @@ struct mer_op_type {
         for(unsigned int i = 0; i < k; ++i, left /= alpha)
             w += left % alpha;
         return w;
+    }
+
+    static mer_t reverse_comp(const mer_t m) {
+        mer_t res = 0;
+        mer_t left = m;
+        for(unsigned int i = 0; i < k; ++i, left /= alpha) {
+            res = (res * alpha) + (alpha - 1 - (left % alpha));
+        }
+        return res;
+    }
+
+    static mer_t canonical(const mer_t m) {
+        return std::min(m, reverse_comp(m));
     }
 };
 

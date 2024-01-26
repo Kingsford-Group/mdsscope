@@ -1,0 +1,93 @@
+purpose 'Sketch a sequence given a context free / set scheme'
+description <<HELP
+
+Boils down to the intersection of k-mers in the set and in the sequence.
+Sequence is read from stdin, set from -f or command line arguments.
+
+HELP
+
+option('a', 'alphabet') {
+  description 'Alphabet translation'
+  c_string
+}
+
+option('f', 'sketch-file') {
+  description 'File with sketch mer set'
+  c_string; typestr 'path'
+  conflict 'champarnaud', 'frac', 'syncmer', 'mykkeltveit'
+}
+
+option('mykkeltveit') {
+  description 'Stream Mykkeltveit set'
+  flag; off
+  conflict 'champarnaud', 'frac', 'sketch-file', 'syncmer'
+}
+
+option('syncmer') {
+  description 'Stream syncmer set'
+  uint32
+  conflict 'champarnaud', 'frac', 'sketch-file', 'mykkeltveit'
+}
+
+option('syncmer-s') {
+  description 'Syncmer s parameter (default k/2 - 1)'
+  uint32
+}
+
+option('frac') {
+  description 'Stream Frac set'
+  double
+  conflict 'champarnaud', 'sketch-file', 'syncmer', 'mykkeltveit'
+}
+
+option('champarnaud') {
+  description 'Stream Champarnaud set'
+  flag; off
+  conflict 'frac', 'sketch-file', 'syncmer', 'mykkeltveit'
+}
+
+option('s', 'straight') {
+  description 'Use set directly (default)'
+  flag; off
+  conflict 'canonical', 'union'
+}
+
+option('c', 'canonical') {
+  description 'Use canonical k-mers'
+  flag; off
+  conflict 'straight', 'union'
+}
+
+option('u', 'union') {
+  description 'Use union of set and reverse complemented set'
+  flag; off
+  conflict 'straight', 'canonical'
+}
+
+option('sum') {
+  description 'Output weighted sum of the histo'
+  flag; off
+}
+
+option('hmin') {
+  description 'Ignore length of histo less than hmin'
+  uint32
+  default 0
+}
+
+option('i', 'iseed') {
+  description 'Input seed file'
+  typestr 'path'
+  c_string
+}
+
+option('o', 'oseed') {
+  description 'Output seed file'
+  typestr 'path'
+  c_string
+}
+
+arg('sketch') {
+  description 'k-mers'
+  c_string; multiple
+}

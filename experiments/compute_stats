@@ -1,0 +1,101 @@
+#! /usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'optparse'
+require 'yaml'
+
+options = {
+  histos: false,
+  sccs: false,
+  threshold: 50,
+  dir: '.',
+}
+parser = OptionParser.new do |o|
+  o.banner = "Usage: #{$PROGRAM_NAME} [options]"
+
+  o.on('--histos', 'Handle histo files (*.histo)')
+  o.on('--sccs', 'Handle SCC files (*.scc)')
+  o.on('--dir DIR', 'Directory to read (cwd)')
+  o.on("--threshold T", Integer, "Histogram threshold #{options[:threshold]}")
+end
+parser.parse!(into: options)
+abort(parser.banner) unless ARGV.empty?
+
+class Hash
+  def hmap(&block)
+    Hash[self.map {|k, v| block.call(k,v) }]
+  end
+end
+
+def mean_stdev(arr)
+    mean = arr.sum(0.0) / arr.size
+    sum = arr.sum(0.0) { |element| (element - mean) ** 2 }
+    { 'mean' => mean, 'stdev' => arr.size == 1 ? 0.0 : Math.sqrt(sum / (arr.size - 1)), 'min' => arr.min, 'max' => arr.max }
+end
+
+
+def unmappable(threshold, files)
+  lens = []
+  files.each do |file|
+    File.open(file) do |fd|
+      sum = 0
+      fd.each do |line|
+        line =~ /(\d+)\s+(\d+)/ or next
+        len, nb = $1.to_i, $2.to_i
+        next unless len >= threshold
+        sum += len * nb
+      end
+      lens << sum
+    end
+  end
+  mean_stdev(lens)
+end
+
+def scc_stats(sccs)
+  nb = []
+  size = []
+  sccs.each do |file|
+    File.open(file) do |fd|
+      fd.each do |line|
+        line =~ /^(\d+),(\d+)$/ && break
+      end
+      nb << $1.to_i
+      size << $2.to_i
+    end
+  end
+  { 'nb' => mean_stdev(nb), 'size' => mean_stdev(size) }
+end
+
+filter = options[:histos] ? '*.histo' : '*.scc'
+inputs = Dir[File.join(options[:dir], filter)]
+
+result = nil
+if options[:histos]
+  datasets = inputs
+               .group_by { |path| File.basename(path) =~ /^(.*?)_/ && $1 }
+               .hmap { |ds, files| [ds, files.group_by { |path| File.basename(path) =~ /_(.*?)_set/ && $1 }] }
+  result = datasets.hmap do |data_name, sketches|
+    data_res = sketches.hmap do |sketch_name, files|
+      by_method = files.group_by { |path| path =~ /_(.)\..*?$/ && $1 }
+      stats = by_method.hmap do |method, files|
+        res = unmappable(options[:threshold], files)
+        [method, res]
+      end
+      [sketch_name, stats]
+    end
+    [data_name, data_res]
+  end
+elsif options[:sccs]
+  by_sketches = inputs
+                  .group_by { |path| File.basename(path) =~ /^(.*?)_set/ && $1 }
+  result = by_sketches.hmap { |sketch_name, files|
+      by_method = files.group_by { |path| path =~ /_(.)\..*?$/ && $1 }
+      stats = by_method.hmap do |method, files|
+        res = scc_stats(files)
+        [method, res]
+      end
+      [sketch_name, stats]
+  }
+end
+
+print(YAML.dump(result))

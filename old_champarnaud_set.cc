@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "champarnaud.hpp"
+#include "old_champarnaud_set.hpp"
 #include "common.hpp"
 #include "dbg.hpp"
 
@@ -113,7 +113,7 @@ mer_t champarnaud_mer(mer_t m) {
 }
 
 int main(int argc, char* argv[]) {
-    champarnaud args(argc, argv);
+    old_champarnaud_set args(argc, argv);
 
     // std::cout << "4 5 " << is_lyndon<4>(5) << '\n';
 
