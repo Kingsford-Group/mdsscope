@@ -77,10 +77,10 @@ if options[:histos]
   result = datasets.hmap do |data_name, sketches|
     data_res = sketches.hmap do |sketch_name, files|
       by_method = files.group_by { |path| path =~ /_(.)\..*?$/ && $1 }
-      stats = by_method.hmap { |method, files|
+      stats = by_method.hmap do |method, files|
         res = unmappable(options[:threshold], files)
         [method, res]
-      }
+      end
       [sketch_name, stats]
     end
     [data_name, data_res]
@@ -90,10 +90,10 @@ elsif options[:sccs]
                   .group_by { |path| File.basename(path) =~ /^(.*?)_set/ && $1 }
   result = by_sketches.hmap { |sketch_name, files|
       by_method = files.group_by { |path| path =~ /_(.)\..*?$/ && $1 }
-      stats = by_method.hmap { |method, files|
+      stats = by_method.hmap do |method, files|
         res = scc_stats(files)
         [method, res]
-      }
+      end
       [sketch_name, stats]
   }
 end

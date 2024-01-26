@@ -9,8 +9,11 @@ description <<~HELP
   Output u l^n for each PCR.
 HELP
 
-# Work around a bug with yaggo < 1.5.11: with no options, it generates
-# an invalid class. Define a bogus option.
+option('brute') {
+  description 'Brute force'
+  flag; off
+}
+
 option("notsorted") {
   description "Do not sort output"
   flag; off

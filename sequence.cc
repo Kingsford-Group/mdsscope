@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <sstream>
+#include <iostream>
 
 void translated_stream::initialize_table(const char* str, unsigned size) {
 	const auto str_len = strlen(str);
@@ -19,9 +20,24 @@ void translated_stream::initialize_table(const char* str, unsigned size) {
 	}
 }
 
+translated_stream& translated_stream::header() {
+	m_seq_name.clear();
+	if(is.peek() == '>') {
+		is.get();
+		std::getline(is, m_seq_name);
+	}
+	return *this;
+}
+
 translated_stream& translated_stream::operator>>(char& c) {
 	char rc;
-	while(is >> rc) {
+	while(true) {
+		if(!(is >> rc)) break;
+		if(rc == '>') {
+			is.putback(rc);
+			c = asize;
+			break;
+		}
 		++offset;
 		// std::cout << "read " << offset << ' ' << rc << ' ' << std::isspace(rc) << ' ' << (int)alphabet.table[rc] << '\n';
 		if(std::isspace(rc)) continue;

@@ -60,7 +60,7 @@ std::vector<mer_t> find_mds(const pcr_info_t& pcr_info, unsigned int offset, con
         // Test wrap around PCR if needed
         if(in_set == mer_ops::nb_mers && pos.imag() < -epsilon) {
             // The first k-mer position must be positive, otherwise it is an error
-            assert2(embed_mer(pcr[0], offset, roots).imag() > epsilon, "First k-mer should be above x-axis");
+            assert2(roots.embed_mer(pcr[0], offset).imag() > epsilon, "First k-mer should be above x-axis");
             in_set = pcr.back();
             in_pos = pos;
         }

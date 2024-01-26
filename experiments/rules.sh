@@ -4,7 +4,8 @@ K=$1
 S=$((K / 2 - 1))
 ILP_PYTHON=$2
 REPEAT=$3
-shift 3
+TRANSCRIPTS=$4
+shift 4
 
 # Random seeds
 for i in $(seq 1 $REPEAT); do
@@ -16,6 +17,9 @@ sets=("mykkeltveit_set" "champarnaud_set")
 for f in "${sets[@]}"; do
     for switch in s c u; do
         echo ": ${f} | ../sketch_components |> %1i -f %f -${switch} > %o |> ${f}_${switch}.scc {all_sccs}"
+        if [ -n "$TRANCRIPTS" ]; then
+            echo ": $TRANSCRIPTS | ${f} ../sketch_histo |> %2i -a ACGT -f %1i -${switch} < %f > %o |> transcripts_${f}_${switch}.histos {transcripts_histos}"
+        fi
     done
 done
 
@@ -26,6 +30,9 @@ for i in $(seq 1 $REPEAT); do
         echo ": ../syncmer_set | seed_${i} |> %f -i %1i -s ${S} -t ${t} > %o |> ${f}"
         for switch in s c u; do
             echo ": ${f} | ../sketch_components |> %1i -f %f -${switch} > %o |> ${f}_${switch}.scc {all_sccs}"
+            if [ -n "$TRANSCRIPTS" ]; then
+                echo ": $TRANSCRIPTS | ${f} ../sketch_histo seed_${i} |> %2i -a ACGT -f %1i -i %3i -${switch} < %f > %o |> transcripts_${f}_${switch}.histos {transcripts_histos}"
+            fi
         done
         sets+=($f)
     done
@@ -35,6 +42,9 @@ for i in $(seq 1 $REPEAT); do
     sets+=($f)
     for switch in s c u; do
         echo ": ${f} | ../sketch_components |> %1i -f %f -${switch} > %o |> ${f}_${switch}.scc {all_sccs}"
+        if [ -n "$TRANCRIPTS" ]; then
+            echo ": $TRANSCRIPTS | ${f} ../sketch_histo seed_${i} |> %2i -a ACGT -f %1i -i %3i -${switch} < %f > %o |> transcripts_${f}_${switch}.histos {transcripts_histos}"
+        fi
     done
 done
 

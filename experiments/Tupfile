@@ -1,15 +1,30 @@
 include_rules
 
+DOEXP=
 ifdef EXP_FILES
-: foreach ../mykkeltveit_set ../champarnaud_set |> %f > %o |> %B
-
-ifdef ILP_PYTHON
-: ../MDS-ILP-Compact.py |> @(ILP_PYTHON) %f -o %o @(ALPHA) @(K) @(EXP_HISTO_THRESH) |> ilp_set
+DOEXP=1
+endif
+ifdef EXP_TRANSCRIPTS
+DOEXP=1
 endif
 
-run $(TUP_CWD)/rules.sh @(K) "$(ILP_PYTHON)" @(EXP_REPEAT) @(EXP_FILES)
+ifneq ($(DOEXP),)
+  ifdef ILP_PYTHON
+    : ../MDS-ILP-Compact.py |> @(ILP_PYTHON) %f -o %o @(ALPHA) @(K) @(EXP_HISTO_THRESH) |> ilp_set
+  endif
 
-: {all_histos} |> ./compute_stats --histos --dir $(TUP_VARIANT_OUTPUTDIR) > %o |> histos
-: {all_sccs} |> ./compute_stats --sccs --dir $(TUP_VARIANT_OUTPUTDIR) > %o |> sccs
+  ifeq (@(EXP_STREAM),)
+    # For small K, explicitely construct sets, compute SCCs
+    : foreach ../mykkeltveit_set ../champarnaud_set |> %f > %o |> %B
+    run $(TUP_CWD)/rules.sh "@(K)" "$(ILP_PYTHON)" "@(EXP_REPEAT)" "@(EXP_TRANSCRIPTS)" @(EXP_FILES)
+    : {all_sccs} |> ./compute_stats --sccs --dir $(TUP_VARIANT_OUTPUTDIR) > %o |> sccs
+  else
+    # For large K, streaming algorithms, no SCCs
+    run $(TUP_CWD)/stream_rules.sh @(K) "@(EXP_S)" "@(EXP_REPEAT)" "@(EXP_TRANSCRIPTS)" @(EXP_FILES)
+  endif
 
+  : {all_histos} |> ./compute_stats --histos --dir $(TUP_VARIANT_OUTPUTDIR) --threshold @(EXP_HISTO_THRESH) > %o |> histos
+  ifdef EXP_TRANSCRIPTS
+        : {transcripts_histos} |> ./transcripts_histos.rb --thresh @(EXP_HISTO_THRESH) %f > %o |> transcripts
+  endif
 endif
