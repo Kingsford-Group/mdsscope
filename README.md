@@ -8,7 +8,7 @@ Part of this code is associated with the manuscript ["Sketching methods with sma
 Please cite:
 
 ``` bibtex
-@misc{marçais2023sketching,
+@misc{sketchingmds,
       title={Sketching methods with small window guarantee using minimum decycling sets}, 
       author={Guillaume Marçais and Dan DeBlasio and Carl Kingsford},
       year={2023},
@@ -19,7 +19,20 @@ Please cite:
 ```
 
 The canonical representation $m^c$ of k-mer $m$ is either a $m$ itself or its reverse complement $\overline{m}^r$, whichever is least lexicographically.
-Part of this code is associated with the research on the effect of using canonical k-mers with sketching methods.
+Part of this code is associated with the research on the effect of using canonical k-mers with sketching methods in the manuscript [$k$-nonical space: sketching with reverse complements](https://www.biorxiv.org/content/10.1101/2024.01.25.577301).
+Please cite:
+
+``` bibtex
+@article{knonicalspace,
+  author = {Guillaume Mar\c{c}ais and Shane Elder and Carl Kingsford},
+  title = {k-nonical space: sketching with reverse complements},
+  elocation-id = {2024.01.25.577301},
+  year = {2024},
+  doi = {10.1101/2024.01.25.577301},
+  publisher = {Cold Spring Harbor Laboratory},
+  journal = {bioRxiv}
+}
+```
 
 # Compiling
 
