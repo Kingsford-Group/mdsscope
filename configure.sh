@@ -126,5 +126,5 @@ exit 0
 fi
 
 mv -f "$tmpFile" "$confFile"
-[ -d ".tup" ] || { echo "Initialize tup"; tup init }
+[ -d ".tup" ] || { echo "Initialize tup"; tup init; }
 [ -d "build-${NAME}" ] || "$TUP" variant "$confFile"
