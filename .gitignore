@@ -12,3 +12,4 @@ configure
 tup-generate.vardict
 build-*
 configs
+mdsscope.sif

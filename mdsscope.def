@@ -1,0 +1,74 @@
+Bootstrap: docker
+From: ubuntu:22.04
+Stage: devel
+
+%arguments
+    # Branch to build
+    treeish=HEAD
+    # Space separated list of parameters to build for. 2:6 means alpha=2 and k=6
+    params=2:6 3:4
+
+%setup
+    mkdir -p ${APPTAINER_ROOTFS}/usr/local/src/mdsscope
+    git archive {{ treeish }} | tar -x -C ${APPTAINER_ROOTFS}/usr/local/src/mdsscope
+
+%post
+    # System installation
+    apt update
+    apt install -y --no-install-recommends tup yaggo build-essential libxxhash-dev
+
+    # Build mdsscope for each of the parameters in params.
+    (
+        cd /usr/local/src/mdsscope
+        for i in {{ params }}; do
+            a=$(echo $i | cut -d: -f 1)
+            k=$(echo $i | cut -d: -f 2)
+            ./configure.sh $a $k
+        done
+        tup
+    )
+
+    # Prepare directories for the final stage. /usr/local/src/mdsscope/build-A2K6 -> /A2K6.
+    # Only install compiled executables.
+    for d in /usr/local/src/mdsscope/build-*; do
+        dir=/$(basename $d | sed 's/^build-//')
+        install -d $dir
+        find $d -maxdepth 1 -type f -executable | xargs install -t $dir
+    done
+
+Bootstrap: docker
+From: ubuntu:22.04
+Stage: final
+
+%help
+    Run mdsscope programs. For example for the Mykkeltveit set with alpha=2 and k=6: /A2K6/mykeltveit_set
+    The available programs are:
+      frac_set
+      mykkeltveit_set
+      champarnaud_set
+      syncmer_set
+      create_seed
+
+      traverse_comp
+      optimize_rem_path_len
+      find_longest_path
+      fms2mds
+
+      mdss2dot
+      comp2rankdot
+
+      sketch_histo
+      syncmer_sketch
+      sketch_components
+      opt_canon
+
+%files from devel
+    /A*K*
+
+%test
+    # Make sure that every executable work at least to get --help
+    for d in /A*K*; do
+        find $d -type f -executable | while read f; do
+            $f --help > /dev/null
+        done
+    done

@@ -67,17 +67,13 @@ fi
 
 NAME="A${ALPHA}K${K}${SUFFIX}"
 
-[ -z "$YAGGO" ] && YAGGO=$(which yaggo 2>/dev/null)
-[ -z "$TUP" ] && TUP=$(which tup 2>/dev/null)
+[ -z "$YAGGO" ] && YAGGO=$(which yaggo || true)
+[ -z "$TUP" ] && TUP=$(which tup || true)
 
-[[ -z "$TUP" || -z "$YAGGO" ]] && { echo "Missing required dependencies: tup and/or yaggo"; false; }
+[[ -z "$TUP" || -z "$YAGGO" ]] && { echo >&2 "Missing required dependencies: tup and/or yaggo"; false; }
 
 detect_compiledb() {
-  v=$("$TUP" --version | sed -e 's/^tup v\?//' -e 's/-.*$//')
-  a=( ${v//./ } )
-  if [ "${a[1]}" -gt "7" ] || [[ "${a[1]}" -eq "7" && "${a[2]}" -ge "11" ]]; then
-  echo yes
-  fi
+  tup compiledb >& /dev/null && echo yes || true
 }
 
 [ -z "$COMPILEDB" ] && COMPILEDB="$(detect_compiledb)"

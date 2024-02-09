@@ -36,18 +36,44 @@ Please cite:
 
 # Compiling
 
-## Requirements
+## An apptainer/singularity
 
-The `tup` build system and the `yaggo` argument parsing library are required.
-Both are available from Ubuntu repositories:
+Create an apptainer image with
 
 ``` shell
-sudo apt install tup yaggo
+apptainer build mdsscope.sif mdsscope.def
 ```
 
-For the compilation commands to work, initialize `tup` in the directory (needed to be run only once): `tup init`.
+The alphabet size and k-mer size are compile time constants, not runtime parameter.
+By default the code is compiled with the following parameters: alpha=2, k=6 and alpha=4, k=3.
 
-## Alphabet and K-mer size
+To change which parameters are used, pass the `params` build argument.
+For example, to compile for alpha=2, k=6,7,8 and alpha=4, k=4,5
+
+``` shell
+apptainer build --build-arg params="2:6 2:7 2:8 4:4 4:5" mdsscope.sif mdsscope.def
+```
+
+To get, for example, the Mykkelteit set for alpha=2 and k=6, run as follows:
+
+``` shell
+apptainer run mdsscope.sif /A2K6/mykkeltveit_set
+```
+
+See below for a list of programs available.
+
+## Locally
+
+### Requirements
+
+The `tup` build system and the `yaggo` argument parsing library are required.
+On Ubuntu, install with:
+
+``` shell
+sudo apt install tup yaggo build-essential libxxhash-dev
+```
+
+### Alphabet and K-mer size
 
 The alphabet size and k-mer size are compile time constants, not runtime parameter.
 Hence the programs must be compiled for any pair of alphabet size / k-mer size combination desired.
@@ -86,7 +112,11 @@ Extra compilation flags can be passed to `configure.sh` via the usual environmen
 * `opt_canon`: greedy optimization procedure to remove k-mers from a set as long as it doesn't create SCCs.
 * `create_seed`: create a valid seed file to be used as input to other programs.
 
+Every program has a `--help`.
+
 # Canonical space
+
+The following is not supported by the apptainer, the code must be compiled/run locally.
 
 ## Experiments
 

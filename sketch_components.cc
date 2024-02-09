@@ -16,7 +16,6 @@
 #include "misc.hpp"
 #include "common.hpp"
 #include "sketch_components.hpp"
-#include "progressbar.hpp"
 #include "tarjan_scc.hpp"
 
 #ifndef K
