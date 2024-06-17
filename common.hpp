@@ -113,4 +113,9 @@ auto joinT(const C& cont, const S& sep) -> join<C, S, T> { return join<C, S, T>(
 template<typename T, typename S, typename IT>
 auto joinitT(IT b, IT e, const S& sep) -> joinit<IT, S, T> { return joinit<IT, S, T>(b, e, sep); }
 
+template<typename T1, typename T2>
+std::ostream& operator<<(std::ostream& os, const std::pair<T1, T2>& p) {
+    return os << p.first << ':' << p.second;
+}
+
 #endif // COMMON_H_

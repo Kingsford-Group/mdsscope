@@ -5,6 +5,23 @@ option('f', 'sketch-file') {
   c_string; typestr 'path'
 }
 
+option('s', 'iseed') {
+  description 'Input seed file'
+  typestr 'path'
+  c_string
+}
+
+option('S', 'oseed') {
+  description 'Output seed file'
+  typestr 'path'
+  c_string
+}
+
+option('i', 'iteration') {
+  description 'Maximum number of optimization iterations'
+  uint64
+}
+
 arg('sketch') {
   description 'k-mers'
   c_string; multiple
