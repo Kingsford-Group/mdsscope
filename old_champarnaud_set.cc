@@ -112,32 +112,47 @@ mer_t champarnaud_mer(mer_t m) {
     return primary_division<1, mer_ops::nb_mers / mer_ops::alpha>::divide(m);
 }
 
-int main(int argc, char* argv[]) {
-    old_champarnaud_set args(argc, argv);
-
-    // std::cout << "4 5 " << is_lyndon<4>(5) << '\n';
-
-    std::bitset<mer_ops::nb_mers> done;
-    std::vector<mer_t> res;
-
-    for(mer_t m = 0; m < mer_ops::nb_mers; ++m) {
-        if(done.test(m)) continue; // Already done that PCR
-
-        // By definition, m is the smallest. Print the PCR and whether m is a
-        // Lyndon word.
-        // std::cout << (size_t)m;
-        done.set(m);
-        for(mer_t nm = mer_ops::nmer(m); nm != m; nm = mer_ops::nmer(nm)) {
-            // std::cout << ',' << (size_t)nm;
-            done.set(nm);
-        }
-        // std::cout << ": " << is_lyndon(m) << '\n';
-        const auto mds_member = champarnaud_mer(m);
-        // std::cout << "->" << (size_t)mds_member << "<-\n";
-        res.push_back(mds_member);
+template<typename mer_ops, bool enabled>
+struct amain {
+    int operator()(const old_champarnaud_set& args) {
+        std::cerr << "Problem size too big" << std::endl;
+		return EXIT_FAILURE;
     }
-    std::sort(res.begin(), res.end());
-    std::cout << joinT<size_t>(res, ',') << '\n';
+};
 
-    return EXIT_SUCCESS;
+template<typename mer_ops>
+struct amain<mer_ops, true> {
+    int operator()(const old_champarnaud_set& args) {
+        std::bitset<mer_ops::nb_mers> done;
+        std::vector<mer_t> res;
+
+        for(mer_t m = 0; m < mer_ops::nb_mers; ++m) {
+            if(done.test(m)) continue; // Already done that PCR
+
+            // By definition, m is the smallest. Print the PCR and whether m is a
+            // Lyndon word.
+            // std::cout << (size_t)m;
+            done.set(m);
+            for(mer_t nm = mer_ops::nmer(m); nm != m; nm = mer_ops::nmer(nm)) {
+                // std::cout << ',' << (size_t)nm;
+                done.set(nm);
+            }
+            // std::cout << ": " << is_lyndon(m) << '\n';
+            const auto mds_member = champarnaud_mer(m);
+            // std::cout << "->" << (size_t)mds_member << "<-\n";
+            res.push_back(mds_member);
+        }
+        std::sort(res.begin(), res.end());
+        std::cout << joinT<size_t>(res, ',') << '\n';
+
+        return EXIT_SUCCESS;
+    }
+};
+
+
+int main(int argc, char* argv[]) {
+    const old_champarnaud_set args(argc, argv);
+
+    return amain<mer_ops, mer_ops::ak_bits <= mer_ops::max_bits>()(args);
+
 }

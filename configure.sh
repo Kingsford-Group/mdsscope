@@ -15,6 +15,7 @@ ALPHA (the alphabet size) and K (the k-mer length) are required. Extra
 compilation flags or option can be passed in the following environment
 variables:
 
+  CXX             Path to g++ version at least 12
   CXXFLAGS        Compilation flags
   LDFLAGS         Linker flags
   LDLIBS          Extra libraries flags
@@ -90,12 +91,22 @@ done
   [ -z "$ILPPYTHON" ] && echo >&2 "No ILP: didn't find a satisfying Python interpreter and packages"
 fi
 
+# Find a valid version for g++
+GCXX=
+for gcc in $CXX g++ g++-12; do
+    $gcc -o check_gcc_version -O0 check_gcc_version.cc
+    ./check_gcc_version 12 0 && GCXX=$gcc && break
+done
+rm -f check_gcc_version
+[ -z "$GCXX" ] && { echo >&2 "Didn't find g++ version at least 12.0"; false; }
+
 mkdir -p configs
 confFile=configs/${NAME}.config
 tmpFile=${confFile}.tmp
 cat > "$tmpFile" <<EOF
 CONFIG_ALPHA=$ALPHA
 CONFIG_K=$K
+CONFIG_CXX=$GCXX
 CONFIG_CXXFLAGS=$OPTFLAGS $CXXFLAGS
 CONFIG_LDFLAGS=$LDFLAGS
 CONFIG_LDLIBS=$LDLIBS

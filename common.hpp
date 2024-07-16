@@ -7,6 +7,7 @@
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
+#include <optional>
 
 // State of a mer. Either it is nil (unknown), no (absent), yes (present) or
 // blocked (should not take part in an F-move).
@@ -116,6 +117,15 @@ auto joinitT(IT b, IT e, const S& sep) -> joinit<IT, S, T> { return joinit<IT, S
 template<typename T1, typename T2>
 std::ostream& operator<<(std::ostream& os, const std::pair<T1, T2>& p) {
     return os << p.first << ':' << p.second;
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const std::optional<T>& x) {
+    if(x)
+        os << "Some(" << *x << ')';
+    else
+        os << "None";
+    return os;
 }
 
 #endif // COMMON_H_

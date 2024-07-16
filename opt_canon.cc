@@ -1,16 +1,22 @@
 #include <iostream>
-#include <unordered_set>
+#include <unistd.h>
 #include <vector>
-#include <queue>
-#include <algorithm>
+#include <unordered_set>
 #include <random>
-
-#include "misc.hpp"
-#include "common.hpp"
-#include "tarjan_scc.hpp"
-#include "random_seed.hpp"
+#include <chrono>
+#include <bitset>
+#include <cstdlib>
+#include <csignal>
+#include <atomic>
+#include <functional>
 
 #include "opt_canon.hpp"
+#include "misc.hpp"
+#include "common.hpp"
+#include "mt_queue.hpp"
+#include "random_seed.hpp"
+#include "simple_thread_pool.hpp"
+
 
 #ifndef K
     #error Must define k-mer length K
@@ -21,65 +27,136 @@
 #endif
 
 #include "mer_op.hpp"
+typedef amer_type<K, ALPHA> amer_t;
+typedef amer_t::mer_ops mer_ops;
+typedef amer_t::mer_t mer_t;
 
-typedef mer_op_type<K, ALPHA> mer_ops;
-typedef mer_ops::mer_t mer_t;
+// Does a BFS to detect a new cycle in the de Bruijn graph minus a set. Starts
+// from m and the reverse complement of m (rcm) and check for a loop back to m
+// or back to rcm.
+template<typename mer_ops>
+struct symm_bfs {
+	mt_queue<amer_t> _queue;
+	// std::vector<std::atomic<char>> _visited;
+	std::vector<char> _visited; // Don't use atomic operations. See mark_visited().
+	simple_thread_pool<std::function<void(int)>> _pool;
+
+	static void noprogress(amer_t i) {}
+
+	symm_bfs(int ths)
+		: _queue(mer_ops::nb_mers)
+		, _visited(mer_ops::nb_mers)
+		, _pool(ths)
+		{}
+	~symm_bfs() { _pool.stop(); }
+
+	template<typename Fn>
+	bool has_cycle(Fn in_set, amer_t m) {
+		// std::fill(_visited.begin(), _visited.end(), 0);
+		std::memset(_visited.data(), 0, _visited.size() * sizeof(decltype(_visited)::value_type));
+		_queue.clear();
+		volatile bool found_loop = false;
+		// The reverse complement of m is also considered removed from set and a
+		// loop involving rcm also triggers returning true.
+		const auto rcm = m.reverse_comp();
+
+		// Process one when starting from m. Consider rcm not part of the set.n
+		auto process_level = [&](int) {
+			std::pair<amer_t*,ssize_t> push_loc{nullptr, 0};
+			ssize_t push_index = 0;
+
+			while(!found_loop) {
+				const auto slice = _queue.multi_pop();
+				if(slice.second <= 0) break; // Finished queue of current level
+
+				// Slice of length slice.second or ends with sentinel value m
+				for(ssize_t i = 0; i < slice.second && slice.first[i] != m; ++i) {
+					amer_t::mer_rc_pair nmer_rc(slice.first[i].nmer(0));
+					for(unsigned b = 0; b < mer_ops::alpha; ++b, ++nmer_rc) {
+						if(mark_visited(nmer_rc.mer)) {
+							const bool is_in_set = (nmer_rc.mer != rcm) && in_set(nmer_rc);
+							if(is_in_set) continue; // Ignore mers in_set
+							if(push_index >= push_loc.second) {
+								push_loc = _queue.multi_push();
+								push_index = 0;
+							}
+							push_loc.first[push_index] = nmer_rc.mer;
+							++push_index;
+						} else if(nmer_rc.mer == m) {
+							found_loop = true; // Loop involving m or rcm
+							break;
+						}
+					}
+				}
+			}
+
+			// Padd unfilled location with sentinel value m
+			if(push_loc.first && push_index < push_loc.second)
+			    push_loc.first[push_index] = m;
+		};
+		_pool.set_work(process_level);
+
+		// Prime queue. Simpler but equivalent to process_level
+		mark_visited(m);
+		amer_t::mer_rc_pair nmer_rc(m.nmer(0));
+		for(unsigned b = 0; b < mer_ops::alpha; ++b, ++nmer_rc) {
+			if(mark_visited(nmer_rc.mer)) {
+				if((nmer_rc.mer != rcm) && in_set(nmer_rc)) continue;
+				_queue.push(nmer_rc.mer);
+			} else if(nmer_rc.mer == m) {
+				return true;
+			}
+		}
+		_queue.swap();
+
+		while(!_queue.current_empty() && !found_loop) {
+			_pool.start();
+			_queue.swap();
+		}
+
+		return found_loop;
+	}
+
+	// Mark node m as _visited. Returns true if not previously visited. I.e.,
+	// this call is the one who changed it to visited.
+	bool mark_visited(const amer_t& m) {
+		// Don't use any atomic operations to save time, although this is not
+		// strictly correct for a BFS. Meaning a node could be visited multiple
+		// times. This is rare. More importantly, it may add a bit of useless
+		// work but it doesn't affect the correctness. Overall it is worth it.
+        const auto prev = _visited[m.val];
+		_visited[m.val] = 1;
+		return prev == 0;
+		// return _visited[m.val].exchange(1) == 0;
+	}
+};
 
 
 struct is_in_set {
-	const std::unordered_set<mer_t>& set;
-	is_in_set(const std::unordered_set<mer_t>& s) : set(s) {}
-	bool operator()(mer_t m) const { return set.find(m) != set.cend(); }
+	const std::unordered_set<amer_t>& set;
+	is_in_set(const std::unordered_set<amer_t>& s) : set(s) {}
+	bool operator()(amer_t m) const { return set.find(m) != set.cend(); }
 };
 
-struct can_is_in_set {
-	const std::unordered_set<mer_t>& set;
-	can_is_in_set(const std::unordered_set<mer_t>& s) : set(s) {}
-	bool operator()(mer_t m) const { return set.find(mer_ops::canonical(m)) != set.cend(); }
-};
-
+template<typename S>
 struct is_in_union {
-	const std::unordered_set<mer_t>& set;
-	is_in_union(const std::unordered_set<mer_t>& s) : set(s) {}
-	bool operator()(mer_t m) const { return set.find(m) != set.cend() || set.find(mer_ops::reverse_comp(m)) != set.cend(); }
-};
-
-// True if mer m or its reverse complement is in s1, but neither are in s2.
-struct is_in_opt {
-	const std::unordered_set<mer_t>& set1;
-	const std::unordered_set<mer_t>& set2;
-	is_in_opt(const std::unordered_set<mer_t>& s1, const std::unordered_set<mer_t>& s2)
-		: set1(s1)
-		, set2(s2)
-		{}
-	bool operator()(mer_t m) const {
-		const auto rcm = mer_ops::reverse_comp(m);
-		return (set1.find(m) != set1.cend() || set1.find(rcm) != set1.cend()) && \
-			(set2.find(m) == set2.end() && set2.find(rcm) == set2.end());
+	const S& set;
+	is_in_union(const S& s) : set(s) {}
+	bool operator()(amer_t m) const {
+		return set.find(m) != set.cend() || set.find(m.reverse_comp()) != set.cend();
+	}
+	bool operator()(const amer_t::mer_rc_pair& pair) const {
+		return set.find(pair.mer) || set.find(pair.rc);
 	}
 };
-
-template<typename R, typename C>
-R to_canonical_set(const C& mers) {
-	R res;
-
-	for(const auto m : mers) {
-		const auto& rc = mer_ops::reverse_comp(m);
-		if(rc < m) continue;
-		res.insert(m);
-		res.insert(rc);
-	}
-
-	return res;
-}
 
 template<typename C>
 size_t canonicalize_size(const C& mers) {
 	size_t size = 0;
-	for(const auto m : mers) {
-		const auto rcm = mer_ops::reverse_comp(m);
+	for(const auto& m : mers) {
+		const auto rcm = m.reverse_comp();
 		// Add two for canonical k-mers (1 for itself, 1 for its rc), unless it is self rc (then add only 1)
-		if(m <= rcm) {
+		if(m < rcm || m == rcm) {
 			++size;
 			if(m < rcm)
 				++size;
@@ -89,131 +166,140 @@ size_t canonicalize_size(const C& mers) {
 	return size;
 }
 
-template<typename C, typename R>
-size_t union_size(const C& mers, const R* remove) {
+template<typename C, typename S>
+size_t union_size(const C& mers, const S& set) {
 	size_t size = 0;
-	for(const auto m : mers) {
-		if(remove && remove->find(m) != remove->end()) continue;
+	for(const auto& m : mers) {
+		if(set.find(m) == set.end()) continue;
 		++size; // Add one for the k-mer itself
-		const auto rcm = mer_ops::reverse_comp(m);
-		if(m != rcm && mers.find(rcm) == mers.end())
+		const auto rcm = m.reverse_comp();
+		if(m != rcm && set.find(rcm) == set.end())
 			++size; // Add one for its rc if not in set
 	}
 	return size;
 }
 
-// Does a BFS to detect a new cycle in the de Bruijn graph minus a set. Starts
-// from m and the reverse complement of m (rcm) and check for a loop back to m
-// or back to rcm.
-struct symm_bfs {
-	std::queue<mer_t> queue;
-	std::vector<bool> visited;
+// set as bitset for quick membership
+template<typename mer_ops>
+struct quickset {
+	typedef amer_t value_type;
+	std::bitset<mer_ops::nb_mers>* _data;
+	quickset()
+	: _data(new std::bitset<mer_ops::nb_mers>)
+		{}
+	~quickset() { delete _data; }
 
-	static void noprogress(mer_t i) {}
+	void set(const amer_t& x) { _data->set(x.val); }
+	void erase(const amer_t& x) { _data->reset(x.val); }
 
-	symm_bfs() : visited(mer_ops::nb_mers) {}
+	bool find(const amer_t& x) const { return _data->test(x.val); }
+	constexpr bool end() const { return false; }
+	constexpr bool cend() const { return false; }
+};
 
-	template<typename Fn>
-	bool has_cycle(Fn in_set, mer_t m) {
-		std::cout << "Has cycle " << (size_t)m << std::endl;
-		const auto rcm = mer_ops::reverse_comp(m);
-		std::cout << "Clear" << std::endl;
-		std::fill(visited.begin(), visited.end(), false);
-		clear_queue();
+namespace
+{
+    volatile std::sig_atomic_t terminate = 0;
+}
+ 
+void signal_handler(int signal)
+{
+    terminate = 1;
+}
 
-		size_t nb_visited = 0;
-		queue.push(m);
-		while(true) { // Repeat with rcm eventually
-			while(!queue.empty()) {
-				if(nb_visited % 1000 == 0)
-					std::cout << '\r' << nb_visited << std::flush;
-				const auto current = queue.front();
-				queue.pop();
-				visited[current] = true;
-				++nb_visited;
+template<typename mer_ops, bool enabled>
+struct amain {
+    int operator()(const opt_canon& args) {
+        std::cerr << "Problem size too big" << std::endl;
+		return EXIT_FAILURE;
+    }
+};
 
-				for(unsigned b = 0; b < mer_ops::alpha; ++b) {
-					const auto nmer = mer_ops::nmer(current, b);
-					if(in_set(nmer)) continue; // Ignore mers in_set
-					if(!visited[nmer]) {
-						queue.push(nmer);
-					} else if(nmer == m || nmer == rcm) {
-						return true; // Loop involving rcm
-					}
-				}
+template<typename mer_ops>
+struct amain<mer_ops, true> {
+    int operator()(const opt_canon& args) {
+		auto prg = seeded_prg<std::mt19937_64>(args.oseed_given ? args.oseed_arg : nullptr,
+											   args.iseed_given ? args.iseed_arg : nullptr);
+
+		// Install a signal handler so the computation can be stopped at any time
+		std::signal(SIGINT, signal_handler);
+		std::signal(SIGTERM, signal_handler);
+
+
+
+		auto orig_set = get_mds<std::unordered_set<amer_t>>(args.sketch_file_arg, args.sketch_arg);
+		//auto order = get_mds<std::vector<amer_t>>(args.sketch_file_arg, args.sketch_arg);
+		std::vector<amer_t> order(orig_set.cbegin(), orig_set.cend());
+		std::shuffle(order.begin(), order.end(), prg);
+
+		quickset<mer_ops> mer_set;
+		for(const auto& m : order)
+			mer_set.set(m);
+
+		is_in_union union_set(mer_set);
+		size_t removed = 0;
+
+		int nb_threads = args.threads_arg > std::thread::hardware_concurrency() ? std::thread::hardware_concurrency() : args.threads_arg;
+ 		symm_bfs<mer_ops> bfs(nb_threads);
+		std::cout << "original set: " << order.size()
+				  << "\ncanonicalized set: " << canonicalize_size(order)
+				  << "\nunion set: " << union_size(order, mer_set) << '\n';
+		const auto begin = std::chrono::steady_clock::now();
+
+		size_t progress = 0;
+		const auto progress_suffix = isatty(1) ? '\r' : '\n';
+
+		for(const auto& m : order) {
+			if(terminate) break;
+			if(args.progress_flag) {
+				std::cout << progress << ' ' << removed << ' '
+						  << (progress / (1e-6 + std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - begin).count()))
+						  << progress_suffix << progress_suffix << std::flush;
+				++progress;
 			}
 
-			if(visited[rcm]) break;
-			queue.push(rcm);
+			const auto rcm = m.reverse_comp();
+			// Must be a super set of canonicalize
+			if(args.can_flag && (m < rcm || m == rcm)) continue;
+			// Skip if rcm is also in set and not the canonical k-mer (avoid double computation)
+			if(mer_set.find(rcm) != mer_set.end() && rcm < m) continue;
+			const bool has_cycle = bfs.has_cycle(union_set, m) || bfs.has_cycle(union_set, rcm);
+			if(!has_cycle) {
+				++removed;
+				mer_set.erase(m);
+				mer_set.erase(rcm);
+			}
+		}
+		if(progress) std::cout << '\n';
+		std::cout << "Removed " << removed << '/' << progress << "\nunion set: " << union_size(order, mer_set) << '\n';
+
+		if(args.output_given) {
+			std::ofstream out(args.output_arg);
+			bool first = true;
+			for(mer_t i = 0; i < mer_ops::nb_mers; ++i) {
+				if(!mer_set._data->test(i)) continue;
+				if(!first) {
+					out << ',';
+					first = false;
+				}
+				out << amer_t(i);
+				if(!out.good()) break;
+			}
+			out.close();
+			if(!out.good()) {
+				std::cerr << "Error while writing set to '" << args.output_arg << "''" << std::endl;
+				return EXIT_FAILURE;
+			}
 		}
 
-		return false;
-	}
-
-	void clear_queue() {
-		while(!queue.empty()) queue.pop();
-	}
+		return EXIT_SUCCESS;
+    }
 };
 
-// Greedy optimization procedure for mer_set using the random order. If
-// can_super is true, result is a super set of the canonicalized mer_set.
-struct greedy_opt {
-	// tarjan_scc<mer_ops> comp_scc;
-	symm_bfs bfs;
-	std::unordered_set<mer_t> remove;
 
-	template<typename C>
-	std::pair<mer_t, mer_t> optimize(const C& mer_set, const std::vector<mer_t>& order, bool can_super, uint64_t max_iteration = 0) {
-		remove.clear();
-		// std::cout << "counts_orig" << std::endl;
-		// const auto counts_orig = comp_scc.scc_counts(is_in_set(mer_set));
-
-		uint64_t iteration = 0;
-		for(const auto m : order) {
-			if(can_super && m <= mer_ops::reverse_comp(m)) continue; // Must it be a super-set of canonical
-
-			// Try adding m to remove. If increase SCCs, don't keep it
-			remove.insert(m);
-			const is_in_opt opt(mer_set, remove);
-			std::cout << "remove " << (size_t)m << std::endl;
-			// const auto counts = comp_scc.scc_counts(opt);
-			// if(counts.first > counts_orig.first || counts.second > counts_orig.second)
-			// 	remove.erase(m);
-			if(bfs.has_cycle(opt, m))
-				remove.erase(m);
-
-			++iteration;
-			std::cout << "iteration " << iteration << std::endl;
-			if(max_iteration > 0 && iteration >= max_iteration) break;
-		}
-
-		return std::make_pair(0, 0);
-	}
-};
 
 int main(int argc, char* argv[]) {
 	opt_canon args(argc, argv);
 
-    auto prg = seeded_prg<std::mt19937_64>(args.oseed_given ? args.oseed_arg : nullptr,
-                                           args.iseed_given ? args.iseed_arg : nullptr);
-
-	std::cout << "Read set" << std::endl;
-	const auto mer_set = get_mds<std::unordered_set<mer_t>>(args.sketch_file_arg, args.sketch_arg);
-	std::cout << "Shuffle set" << std::endl;
-	std::vector<mer_t> order(mer_set.begin(), mer_set.end());
-	std::shuffle(order.begin(), order.end(), prg);
-
-	greedy_opt optimizer;
-
-	const auto counts = optimizer.optimize(mer_set, order, true, args.iteration_given? args.iteration_arg : 0);
-	std::cout << "set\tsize\tsccs\n"
-			  << "orig\t" << mer_set.size() << '\t' << counts << '\n'
-			  << "union\t" << union_size(mer_set, (std::set<mer_t>*)nullptr) /* << '\t' << optimizer.comp_scc.scc_counts(is_in_union(mer_set)) */ << '\n'
-			  << "canon\t" << canonicalize_size(mer_set) /* << '\t' << optimizer.comp_scc.scc_counts(can_is_in_set(mer_set)) */ << '\n'
-			  << "super\t" << union_size(mer_set, &optimizer.remove) /* << '\t' << optimizer.comp_scc.scc_counts(is_in_opt(mer_set, optimizer.remove)) */ << '\n';
-
-	optimizer.optimize(mer_set, order, false, args.iteration_given? args.iteration_arg : 0);
-	std::cout << "opt\t" << union_size(mer_set, &optimizer.remove) /* << '\t' <<  optimizer.comp_scc.scc_counts(is_in_opt(mer_set, optimizer.remove)) */ << '\n';
-
-	return EXIT_SUCCESS;
+return amain<mer_ops, mer_ops::ak_bits <= mer_ops::max_bits>()(args);
 }

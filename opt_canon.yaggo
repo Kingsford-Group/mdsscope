@@ -1,7 +1,22 @@
-purpose "Find set one less than union"
+description "test"
 
 option('f', 'sketch-file') {
   description 'File with sketch mer set'
+  c_string; typestr 'path'
+}
+
+option('c', 'can') {
+  description 'Must be a super set of the canonicalized set'
+  flag; off
+}
+
+option('t', 'threads') {
+  description 'Number of threads'
+  uint32; typestr 'N'; default 1
+}
+
+option('o', 'output') {
+  description 'Output created set'
   c_string; typestr 'path'
 }
 
@@ -17,9 +32,9 @@ option('S', 'oseed') {
   c_string
 }
 
-option('i', 'iteration') {
-  description 'Maximum number of optimization iterations'
-  uint64
+option('p', 'progress') {
+  description 'Show progress'
+  flag; off
 }
 
 arg('sketch') {

@@ -3,7 +3,8 @@ include_rules
 export PKG_CONFIG_PATH
 
 # CXXFLAGS=-O3 -DNDEBUG -Wall -Werror -DHAVE_EXECINFO_H `pkg-config --cflags libxxhash` -pthread
-CXXFLAGS=-Wall -Werror -DHAVE_EXECINFO_H -I$(TUP_VARIANTDIR) -pthread -std=c++20 -DHAVE_INT128
+# CXXFLAGS=-Wall -Werror -DHAVE_EXECINFO_H -I$(TUP_VARIANTDIR) -pthread -std=c++20 -DHAVE_INT128
+CXXFLAGS=-Wall -DHAVE_EXECINFO_H -I$(TUP_VARIANTDIR) -pthread -std=gnu++20 -DHAVE_INT128
 LDFLAGS=-pthread
 LDLIBS=
 

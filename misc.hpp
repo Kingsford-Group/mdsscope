@@ -74,12 +74,17 @@ std::vector<mer_type> mds_from_file(const char* path_mds, bool sort = true) {
 }
 
 template<typename C>
-C get_mds(const char* path_mds, std::vector<const char*> args) {
-	C res;
+void get_mds(const char* path_mds, std::vector<const char*> args, C& res) {
 	if(path_mds != nullptr && path_mds[0] != '\0')
 		mds_read_to(path_mds, res);
 	if(args.size() > 0)
 		mds_parse_to(args, res);
+}
+
+template<typename C>
+inline C get_mds(const char* path_mds, std::vector<const char*> args) {
+	C res;
+	get_mds(path_mds, args, res);
 	return res;
 }
 
