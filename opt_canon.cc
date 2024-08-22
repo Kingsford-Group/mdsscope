@@ -53,7 +53,7 @@ struct symm_bfs {
 	template<typename Fn>
 	bool has_cycle(Fn in_set, amer_t m) {
 		// std::fill(_visited.begin(), _visited.end(), 0);
-		std::memset(_visited.data(), 0, _visited.size() * sizeof(decltype(_visited)::value_type));
+		std::memset(_visited.data(), 0, _visited.size() * sizeof(typename decltype(_visited)::value_type));
 		_queue.clear();
 		volatile bool found_loop = false;
 		// The reverse complement of m is also considered removed from set and a

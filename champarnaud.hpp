@@ -2,9 +2,11 @@
 #define CHAMPARNAUD_H_
 
 #include <vector>
+#include <iostream>
 #include "divisor.hpp"
 #include "mer_op.hpp"
 #include "dbg.hpp"
+#include "typename.hpp"
 
 template<typename mer_ops>
 struct index_t {
@@ -12,12 +14,15 @@ struct index_t {
 	typedef typename mer_ops::mer_t mer_t;
 	const unsigned m_k;
 
-	std::vector<jflib::divisor64> alphap; // alphap[i] = alpha^i (the divisor)
+	// std::vector<jflib::divisor64> alphap; // alphap[i] = alpha^i (the divisor)
+	std::vector<mer_t> alphap;
 	std::vector<std::vector<unsigned>> divisors; // divisors[i] = divisors of i
 
 	index_t(unsigned k_) : m_k(k_) {
+//		std::cout << "mer_type " << nameof(mer_t) << std::endl;
 		alphap.reserve(m_k+1);
 		for(unsigned i = 0; i <= m_k; ++i) {
+//			std::cout << alpha << ' ' << i << ' ' << ipow((mer_t)alpha, i) << std::endl;
 			alphap.emplace_back(ipow((mer_t)alpha, i));
 			std::vector<unsigned> divs;
 			for(unsigned j = 1; j <= i; ++j) {
@@ -142,7 +147,8 @@ struct index_t {
 	mer_t reversed(const unsigned k, const mer_t mer) const {
 		auto div = parts(mer);
 		if(div.second == k) return mer;
-		mer_t rev = subword(0, div.second, mer) + subword(div.second, k - div.second, mer) * alphap[div.second].d();
+		// mer_t rev = subword(0, div.second, mer) + subword(div.second, k - div.second, mer) * alphap[div.second].d();
+		mer_t rev = subword(0, div.second, mer) + subword(div.second, k - div.second, mer) * alphap[div.second];
 		return rev;
 	}
 
@@ -171,7 +177,8 @@ struct index_t {
 
 	bool in_champarnaud_set(const mer_t mer) const {
 		for(unsigned i = 0; i < m_k; ++i) {
-			mer_t rev = i == 0 ? mer : subword(0, i, mer) + subword(i, m_k - i, mer) * alphap[i].d();
+			// mer_t rev = i == 0 ? mer : subword(0, i, mer) + subword(i, m_k - i, mer) * alphap[i].d();
+			mer_t rev = i == 0 ? mer : subword(0, i, mer) + subword(i, m_k - i, mer) * alphap[i];
 			bool smallest = true;
 			for(mer_t cur = mer_ops::nmer(rev); cur != rev && smallest; cur = mer_ops::nmer(cur))
 				smallest = rev < cur;

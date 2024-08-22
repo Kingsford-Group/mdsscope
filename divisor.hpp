@@ -33,14 +33,14 @@ class divisor64 {
   const unsigned __int128 m_;
 #endif
   template<typename T>
-  static T div_ceil(T x, T y) {
+  static constexpr T div_ceil(T x, T y) {
     T q = x / y;
     T r = x % y;
     return q + (r > 0);
   }
 
   template<typename T>
-  static uint16_t ceilLog2(T x, uint16_t r = 0, uint16_t i = 0) {
+  static constexpr uint16_t ceilLog2(T x, uint16_t r = 0, uint16_t i = 0) {
     if(x > 1)
       return ceilLog2(x >> 1, r + 1, i | (x & 1));
     return r + i;

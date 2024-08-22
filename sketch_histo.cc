@@ -99,7 +99,8 @@ inline bool syncmer(const syncmer_data_type* d, mer_t m) {
 struct frac_data_type {
 	typedef std::uniform_int_distribution<mer_t> mask_rng;
 	const mer_t mask1, mask2;
-	jflib::divisor64 rot;
+	// jflib::divisor64 rot;
+	mer_t rot;
 	const mer_t shift;
 	const mer_t thresh;
 	template<typename PRG>
@@ -107,7 +108,8 @@ struct frac_data_type {
 		: mask1(mask_rng(0, std::numeric_limits<mer_t>::max())(prg))
 		, mask2(mask_rng(0, std::numeric_limits<mer_t>::max())(prg))
 		, rot(ipow((mer_t)mer_ops::alpha, std::uniform_int_distribution<int>(0, mer_ops::k-1)(prg)))
-		, shift(mer_ops::nb_mers / rot.d())
+		// , shift(mer_ops::nb_mers / rot.d())
+		, shift(mer_ops::nb_mers / rot)
 		, thresh(std::round(mer_ops::nb_mers * f))
 		{}
 };
