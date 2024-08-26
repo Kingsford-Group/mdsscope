@@ -100,6 +100,11 @@ done
 rm -f check_gcc_version
 [ -z "$GCXX" ] && { echo >&2 "Didn't find g++ version at least 12.0"; false; }
 
+# Finc xxhash via pkg-config
+XXHASH_CFLAGS=$(pkg-config --cflags libxxhash)
+XXHASH_LDFLAGS=$(pkg-config --libs-only-L libxxhash) $(pkg-config --libs-only-L libxxhash | sed 's/-L/-Wl,-rpath/g')
+XXHASH_LDLIBS=$(pkg-config --libs libxxhash)
+
 mkdir -p configs
 confFile=configs/${NAME}.config
 tmpFile=${confFile}.tmp
@@ -107,9 +112,9 @@ cat > "$tmpFile" <<EOF
 CONFIG_ALPHA=$ALPHA
 CONFIG_K=$K
 CONFIG_CXX=$GCXX
-CONFIG_CXXFLAGS=$OPTFLAGS $CXXFLAGS
-CONFIG_LDFLAGS=$LDFLAGS
-CONFIG_LDLIBS=$LDLIBS
+CONFIG_CXXFLAGS=$XXHASH_CFLAGS $OPTFLAGS $CXXFLAGS
+CONFIG_LDFLAGS=$XXHASH_LDFLAGS $LDFLAGS
+CONFIG_LDLIBS=$XXHASH_LDLIBS $LDLIBS
 CONFIG_YAGGO=$YAGGO
 CONFIG_COMPILEDB=$COMPILEDB
 EOF

@@ -8,7 +8,8 @@
 #include <memory>
 
 #include "misc.hpp"
-#include "common.hpp"
+// #include "common.hpp"
+#include "permutations.hpp"
 #include "random_seed.hpp"
 #include "sequence.hpp"
 #include "mykkeltveit.hpp"
@@ -96,29 +97,44 @@ inline bool syncmer(const syncmer_data_type* d, mer_t m) {
 }
 
 
+// struct frac_data_type {
+// 	typedef std::uniform_int_distribution<mer_t> mask_rng;
+// 	const mer_t mask1, mask2;
+// 	// jflib::divisor64 rot;
+// 	mer_t rot;
+// 	const mer_t shift;
+// 	const mer_t thresh;
+// 	template<typename PRG>
+// 	frac_data_type(double f, PRG& prg)
+// 		: mask1(mask_rng(0, std::numeric_limits<mer_t>::max())(prg))
+// 		, mask2(mask_rng(0, std::numeric_limits<mer_t>::max())(prg))
+// 		, rot(ipow((mer_t)mer_ops::alpha, std::uniform_int_distribution<int>(0, mer_ops::k-1)(prg)))
+// 		// , shift(mer_ops::nb_mers / rot.d())
+// 		, shift(mer_ops::nb_mers / rot)
+// 		, thresh(std::round(mer_ops::nb_mers * f))
+// 		{}
+// };
+// inline bool frac(const frac_data_type* d, mer_t m) {
+// 	m ^= d->mask1;
+// 	m = (m % d->rot) * d->shift + (m / d->rot);
+// 	m ^= d->mask2;
+// 	m %= mer_ops::nb_mers;
+// 	return m < d->thresh;
+// }
+
 struct frac_data_type {
-	typedef std::uniform_int_distribution<mer_t> mask_rng;
-	const mer_t mask1, mask2;
-	// jflib::divisor64 rot;
-	mer_t rot;
-	const mer_t shift;
-	const mer_t thresh;
-	template<typename PRG>
-	frac_data_type(double f, PRG& prg)
-		: mask1(mask_rng(0, std::numeric_limits<mer_t>::max())(prg))
-		, mask2(mask_rng(0, std::numeric_limits<mer_t>::max())(prg))
-		, rot(ipow((mer_t)mer_ops::alpha, std::uniform_int_distribution<int>(0, mer_ops::k-1)(prg)))
-		// , shift(mer_ops::nb_mers / rot.d())
-		, shift(mer_ops::nb_mers / rot)
-		, thresh(std::round(mer_ops::nb_mers * f))
-		{}
+  const LubyRackofPermutation<mer_t> perm;
+  const mer_t thresh;
+
+  template<typename PRG>
+  frac_data_type(double f, PRG& prg)
+  : perm(prg)
+  , thresh(std::round(std::powf(2.0, sizeof(mer_t) * 8) * f))
+  {}
 };
+
 inline bool frac(const frac_data_type* d, mer_t m) {
-	m ^= d->mask1;
-	m = (m % d->rot) * d->shift + (m / d->rot);
-	m ^= d->mask2;
-	m %= mer_ops::nb_mers;
-	return m < d->thresh;
+  return d->perm(m) < d->thresh;
 }
 
 bool canonical_fn(std::function<bool(mer_t)> f, mer_t m) {
