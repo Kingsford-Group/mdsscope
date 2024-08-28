@@ -73,6 +73,7 @@ struct champarnaud_data_type {
 };
 inline bool champarnaud(const champarnaud_data_type* d, mer_t m) { return d->index.in_champarnaud_set(m); }
 
+// Syncmer when s is small (order on s-mer is an explicitely shuffled array)
 struct syncmer_data_type {
 	const unsigned s, t;
 	const jflib::divisor64 div_s;
@@ -82,7 +83,7 @@ struct syncmer_data_type {
 	syncmer_data_type(unsigned s, unsigned t, PRG* prg)
 		: s(s)
 		, t(t)
-		, div_s(ipow(mer_ops::alpha, s))
+		, div_s(ipow((mer_t)mer_ops::alpha, (mer_t)s))
 		, smer_order(div_s.d())
 		{
 			for(mer_t s = 0; s < div_s.d(); ++s)
@@ -96,6 +97,23 @@ inline bool syncmer(const syncmer_data_type* d, mer_t m) {
 	return min_smer<mer_ops>(m, d->s, d->smer_order, d->div_s) == d->t;
 }
 
+// Syncmer for large s (s-mer order using perm)
+struct syncmer_large_data_type {
+    const unsigned s, t;
+	const jflib::divisor64 div_s;
+    const LubyRackofPermutation<mer_t> perm;
+
+	template<typename PRG>
+	syncmer_large_data_type(unsigned s, unsigned t, PRG* prg)
+	: s(s)
+	, t(t)
+	, div_s(ipow((mer_t)mer_ops::alpha, (mer_t)s))
+	, perm(*prg)
+	{ }
+};
+inline bool syncmer_large(const syncmer_large_data_type* d, mer_t m) {
+	return min_large_smer<mer_ops>(m, d->s, d->perm, d->div_s) == d->t;
+}
 
 // struct frac_data_type {
 // 	typedef std::uniform_int_distribution<mer_t> mask_rng;
@@ -129,12 +147,13 @@ struct frac_data_type {
   template<typename PRG>
   frac_data_type(double f, PRG& prg)
   : perm(prg)
-  , thresh(std::round(std::powf(2.0, sizeof(mer_t) * 8) * f))
-  {}
+  , thresh(std::round(std::pow(2.0, sizeof(mer_t) * 8) * f))
+  { }
 };
 
 inline bool frac(const frac_data_type* d, mer_t m) {
-  return d->perm(m) < d->thresh;
+  const auto val = d->perm(m);
+  return  val < d->thresh;
 }
 
 bool canonical_fn(std::function<bool(mer_t)> f, mer_t m) {
@@ -145,8 +164,9 @@ bool union_fn(std::function<bool(mer_t)> f, mer_t m) {
 	return f(m) || f(mer_ops::canonical(m));
 }
 
-void fill_in_histo(translated_stream& ts, std::vector<size_t>& histo, std::function<bool(mer_t)> lookup) {
+double fill_in_histo(translated_stream& ts, std::vector<size_t>& histo, std::function<bool(mer_t)> lookup) {
 	std::fill(histo.begin(), histo.end(), 0);
+	uint64_t selected = 0, kmers = 0;
 	ts.header(); // Call at beginnin of every subsequence.
 	// std::cout << "Reading " << ts.seq_name() << std::endl;
 
@@ -157,18 +177,20 @@ void fill_in_histo(translated_stream& ts, std::vector<size_t>& histo, std::funct
 	  	size_t offset = 0;
 		for( ; offset + 1 < mer_ops::k && ts >> inchar; ++offset) {
 //			std::cout << "inchar " << (int)inchar << '\n';
-			if(inchar == mer_ops::alpha) return;
+			if(inchar == mer_ops::alpha) return -1.0;
 			mer = mer_ops::nmer(mer, inchar);
 		}
 	}
 
 	size_t offset = 0;
 	while(ts >> inchar) {
+		++kmers;
 //		std::cout << "inchar " << (int)inchar << '\n';
-		if(inchar == mer_ops::alpha) return;
+		if(inchar == mer_ops::alpha) return -1.0;
 		mer = mer_ops::nmer(mer, inchar);
 //		std::cout << "lookup" << std::endl;
 		if(lookup(mer)) {
+			++selected;
 //			std::cout << "true" << std::endl;
 			const size_t dist = offset - prev;
 			if(dist >= histo.size())
@@ -179,6 +201,8 @@ void fill_in_histo(translated_stream& ts, std::vector<size_t>& histo, std::funct
 //		std::cout << "after" << std::endl;
 		++offset;
 	}
+
+	return (double)selected / (double)kmers;
 }
 
 int main(int argc, char* argv[]) {
@@ -195,6 +219,7 @@ int main(int argc, char* argv[]) {
 	std::unordered_map<mer_t,bool> mer_set_cache;
 	std::unique_ptr<root_unity_type<mer_ops>> root_unity;
 	std::unique_ptr<syncmer_data_type> syncmer_data;
+	std::unique_ptr<syncmer_large_data_type> syncmer_large_data;
 	std::unique_ptr<frac_data_type> frac_data;
 	std::unique_ptr<champarnaud_data_type> champarnaud_data;
 
@@ -208,11 +233,17 @@ int main(int argc, char* argv[]) {
 		lookups.emplace_back(std::bind_front(mykkeltveit, root_unity.get()));
 	} else if(args.syncmer_given) {
 		const unsigned s = args.syncmer_s_given ? args.syncmer_s_arg : K / 2 - 1;
-		syncmer_data.reset(new syncmer_data_type(s, args.syncmer_arg, &prg));
-		lookups.emplace_back(std::bind_front(syncmer, syncmer_data.get()));
+		if(std::pow(mer_ops::alpha, s) < 1e9) {
+            std::cerr << "syncmer " << s << ' ' << args.syncmer_arg << std::endl;
+            syncmer_data.reset(new syncmer_data_type(s, args.syncmer_arg, &prg));
+            lookups.emplace_back(std::bind_front(syncmer, syncmer_data.get()));
+		} else {
+            std::cerr << "syncmer large" << s << ' ' << args.syncmer_arg << std::endl;
+			syncmer_large_data.reset(new syncmer_large_data_type(s, args.syncmer_arg, &prg));
+			lookups.emplace_back(std::bind_front(syncmer_large, syncmer_large_data.get()));
+		}
 	} else if(args.frac_given) {
-		double f = 0.2;
-		frac_data.reset(new frac_data_type(f, prg));
+		frac_data.reset(new frac_data_type(args.frac_arg, prg));
 		lookups.emplace_back(std::bind_front(frac, frac_data.get()));
 	} else if(args.champarnaud_flag) {
 		champarnaud_data.reset(new champarnaud_data_type());
@@ -236,9 +267,10 @@ int main(int argc, char* argv[]) {
 
 	while(ts) {
 		// std::cout << "loop" << std::endl;
-		fill_in_histo(ts, histo, lookup);
+		const auto density = fill_in_histo(ts, histo, lookup);
 		if(!ts.seq_name().empty())
 			std::cout << '>' << ts.seq_name() << '\n';
+		std::cout << "# density " << density << '\n';
 		if(args.sum_flag) {
 			size_t sum = 0;
 			for(size_t i = 0; i < histo.size(); ++i) {

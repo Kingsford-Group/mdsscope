@@ -3,6 +3,7 @@
 
 #include<vector>
 #include "divisor.hpp"
+#include "permutations.hpp"
 
 template<typename mer_ops, typename mer_t = typename mer_ops::mer_t>
 unsigned min_smer(mer_t m, unsigned s, const std::vector<mer_t>& smer_order, const jflib::divisor64& div_s) {
@@ -21,5 +22,19 @@ unsigned min_smer(mer_t m, unsigned s, const std::vector<mer_t>& smer_order, con
 	return mer_ops::k - s - min;
 }
 
+template<typename mer_ops, typename mer_t = typename mer_ops::mer_t>
+unsigned min_large_smer(mer_t m, unsigned s, const LubyRackofPermutation<mer_t>& perm, const jflib::divisor64& div_s) {
+    unsigned min = 0;
+	mer_t min_val = perm(m % div_s);
+	m /= mer_ops::alpha;
+	for(unsigned i = 1; i < mer_ops::k - s + 1; ++i, m /= mer_ops::alpha) {
+		mer_t smer = perm(m % div_s);
+		if(smer <= min_val) {
+			min = i;
+			min_val = smer;
+		}
+	}
+	return mer_ops::k - s - min;
+}
 
 #endif // SYNCMER_H_
