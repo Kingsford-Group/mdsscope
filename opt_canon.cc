@@ -16,6 +16,7 @@
 #include "mt_queue.hpp"
 #include "random_seed.hpp"
 #include "simple_thread_pool.hpp"
+#include "longest_path.hpp"
 
 
 #ifndef K
@@ -30,6 +31,7 @@
 typedef amer_type<K, ALPHA> amer_t;
 typedef amer_t::mer_ops mer_ops;
 typedef amer_t::mer_t mer_t;
+typedef longest_path_type<mer_ops> longest_path;
 
 // Does a BFS to detect a new cycle in the de Bruijn graph minus a set. Starts
 // from m and the reverse complement of m (rcm) and check for a loop back to m
@@ -244,6 +246,18 @@ struct amain<mer_ops, true> {
 		std::cout << "original set: " << order.size()
 				  << "\ncanonicalized set: " << canonicalize_size(order)
 				  << "\nunion set: " << union_size(order, mer_set) << '\n';
+		if(args.longest_flag) {
+			// dumb way to do it: expand the sets. But, will work for now
+			longest_path lp;
+			std::vector<mer_t> path_mers;
+			path_mers.reserve(orig_set.size());
+			for(auto& m : orig_set)
+			  path_mers.push_back(m.val);
+			std::cout << "path original: " << (size_t)lp.longest_path(path_mers) << '\n';
+			for(auto& m : orig_set)
+			  path_mers.push_back(m.reverse_comp().val);
+			std::cout << "path union: " << (size_t)lp.longest_path(path_mers) << '\n';
+		}
 		const auto begin = std::chrono::steady_clock::now();
 
 		size_t progress = 0;
@@ -271,7 +285,7 @@ struct amain<mer_ops, true> {
 			}
 		}
 		if(progress) std::cout << '\n';
-		std::cout << "Removed " << removed << '/' << progress << "\nunion set: " << union_size(order, mer_set) << '\n';
+		std::cout << "Removed " << removed << '/' << progress << "\nopt set: " << union_size(order, mer_set) << '\n';
 
 		if(args.output_given) {
 			std::ofstream out(args.output_arg);
@@ -280,9 +294,10 @@ struct amain<mer_ops, true> {
 				if(!mer_set._data->test(i)) continue;
 				if(!first) {
 					out << ',';
+				} else {
 					first = false;
 				}
-				out << amer_t(i);
+				out << amer_t(i) << ',' << amer_t(i).reverse_comp();
 				if(!out.good()) break;
 			}
 			out.close();
@@ -290,6 +305,17 @@ struct amain<mer_ops, true> {
 				std::cerr << "Error while writing set to '" << args.output_arg << "''" << std::endl;
 				return EXIT_FAILURE;
 			}
+		}
+
+		if(args.longest_flag) {
+            longest_path lp;
+			std::vector<mer_t> path_mers;
+			for(mer_t i = 0; i < mer_ops::nb_mers; ++i) {
+				if(!mer_set._data->test(i)) continue;
+				path_mers.push_back(mer_t(i));
+				path_mers.push_back(mer_ops::reverse_comp(mer_t(i)));
+			}
+			std::cout << "path opt: " << (size_t)lp.longest_path(path_mers) << '\n';
 		}
 
 		return EXIT_SUCCESS;

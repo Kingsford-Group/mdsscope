@@ -16,8 +16,13 @@ option('t', 'threads') {
 }
 
 option('o', 'output') {
-  description 'Output created set'
+  description 'Output optimized set'
   c_string; typestr 'path'
+}
+
+option('l', 'longest') {
+   description 'Compute and print longest path'
+   flag; off
 }
 
 option('s', 'iseed') {
