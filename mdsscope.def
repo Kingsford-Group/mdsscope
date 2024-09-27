@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: ubuntu:22.04
+From: ubuntu:24.04
 Stage: devel
 
 %arguments
@@ -15,7 +15,7 @@ Stage: devel
 %post
     # System installation
     apt update
-    apt install -y --no-install-recommends tup yaggo build-essential libxxhash-dev
+    apt install -y --no-install-recommends tup fuse3 yaggo build-essential libxxhash-dev pkg-config
 
     # Build mdsscope for each of the parameters in params.
     (
@@ -37,7 +37,7 @@ Stage: devel
     done
 
 Bootstrap: docker
-From: ubuntu:22.04
+From: ubuntu:24.04
 Stage: final
 
 %help
