@@ -32,7 +32,7 @@ struct SketchComponentsArgs : argparse::Args {
 	bool& union_flag = flag("u,union", "Use union of set and reverse complemented set");
 	bool& progress_flag = flag("p,progress", "Display progress");
 
-	std::vector<const char*>& sketch_arg = arg("k-mers");
+	std::vector<const char*>& sketch_arg = arg("k-mers").set_default("");
 
 	void welcome() override {
 		std::cout << "Find sketching methods strongly connected components" << std::endl;

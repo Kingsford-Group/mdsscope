@@ -27,6 +27,7 @@
 #include <cctype>              // for isdigit, tolower
 #include <sstream>
 #include <cstdlib>             // for size_t, exit
+#include <cstring>
 #include <algorithm>           // for max, transform, copy, min
 #include <iomanip>             // for operator<<, setw
 #include <iostream>            // for operator<<, basic_ostream, endl, ostream
@@ -113,7 +114,7 @@ namespace argparse {
     template<> inline unsigned short get(const std::string &v) { return std::stoul(v); }
     template<> inline unsigned long get(const std::string &v) { return std::stoul(v); }
     template<> inline unsigned long long get(const std::string &v) { return std::stoul(v); }
-    template<> inline const char* get(const std::string& v) { return v.c_str(); }
+    template<> inline const char* get(const std::string& v) { return strdup(v.c_str()); } // Maybe leaking that argument
 
     template<typename T> inline T get(const std::string &v) { // remaining types
         if constexpr (is_vector<T>::value) {

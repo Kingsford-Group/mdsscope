@@ -44,7 +44,7 @@ struct SketchHistoArgs : argparse::Args {
 	uint32_t& hmin_arg = flag("hmin", "Ignore length of histo less than hmin").set_default(0);
 
 
-	std::vector<const char*>& sketch_arg = arg("sketch");
+	std::vector<const char*>& sketch_arg = arg("sketch").set_default("");
 
 	void welcome() override {
 		std::cout <<

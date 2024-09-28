@@ -25,7 +25,22 @@ flags or option can be passed in the following environment variables:
 
 The following programs are built:
 
-
+traverse_comp
+mdss2dot
+comp2rankdot
+fms2mds
+optimize_rem_path_len
+mykkeltveit_set
+find_longest_path
+champarnaud_set
+sketch_components
+syncmer_set
+syncmer_sketch
+frac_set
+create_seed
+sketch_histo
+old_champarnaud_set
+opt_canon
 
 Options:
   -h          Help, this message
