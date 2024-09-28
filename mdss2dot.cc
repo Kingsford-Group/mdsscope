@@ -2,17 +2,24 @@
 #include <fstream>
 #include <string>
 #include <set>
-#include <algorithm>
 
-#include "mdss2dot.hpp"
+#include "argparse.hpp"
 #include "mer_op.hpp"
 #include "common.hpp"
 
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
 
+struct MDSs2DOTArgs : argparse::Args {
+    std::string& mds_arg = arg("DS list file");
+
+    void welcome() override {
+        std::cout << "Generate dot file from MDS list" << std::endl;
+    }
+};
+
 int main(int argc, char* argv[]) {
-    mdss2dot args(argc, argv);
+    const auto args = argparse::parse<MDSs2DOTArgs>(argc, argv);
 
     std::ifstream is(args.mds_arg);
     if(!is.good()) {

@@ -2,14 +2,12 @@
 // strongly connected components of the de Bruijn graph minus the set of
 // selected k-mers.
 
+#include "argparse.hpp"
 #include <iostream>
 #include <iomanip>
 #include <unordered_set>
-#include <vector>
 #include <cassert>
 #include <cstddef>
-#include <limits>
-#include <type_traits>
 #include <cstdlib>
 
 #ifndef K
@@ -20,15 +18,26 @@
     #error Must define alphabet length ALPHA
 #endif
 
-#include "typename.hpp"
 #include "misc.hpp"
-#include "common.hpp"
-#include "sketch_components.hpp"
 #include "tarjan_scc.hpp"
 #include "mer_op.hpp"
 
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
+
+struct SketchComponentsArgs : argparse::Args {
+	std::optional<const char*>& sketch_file_arg = kwarg("f,sketch-file", "File with sketch mer set");
+	bool& straight_flag = flag("s,straight", "Use set directly (default)");
+	bool& canonical_flag = flag("c,canonical", "Use canonical k-mers");
+	bool& union_flag = flag("u,union", "Use union of set and reverse complemented set");
+	bool& progress_flag = flag("p,progress", "Display progress");
+
+	std::vector<const char*>& sketch_arg = arg("k-mers");
+
+	void welcome() override {
+		std::cout << "Find sketching methods strongly connected components" << std::endl;
+	}
+};
 
 // Function checking if a mer is in the set of selecting mers.
 // typedef bool (*in_set_fn)(mer_t);
@@ -52,13 +61,18 @@ struct is_in_union {
 };
 
 int main(int argc, char* argv[]) {
-	sketch_components args(argc, argv);
+	const auto args = argparse::parse<SketchComponentsArgs>(argc, argv);
+
+	if(args.straight_flag + args.canonical_flag + args.union_flag > 1) {
+		std::cerr << "--straight, --canonical, --union conflict" << std::endl;
+		return EXIT_FAILURE;
+	}
 
 	if constexpr(mer_ops::ak_bits > mer_ops::max_bits) {
 		std::cerr << "Problem size too big" << std::endl;
 		return EXIT_FAILURE;
 	} else {
-		const auto mer_set = get_mds<std::unordered_set<mer_t>>(args.sketch_file_arg, args.sketch_arg);
+		const auto mer_set = get_mds<std::unordered_set<mer_t>>(args.sketch_file_arg ? *args.sketch_file_arg : nullptr, args.sketch_arg);
 
 		mer_t components = 0, in_components = 0, visited = 0;
 		size_t updates = 0;

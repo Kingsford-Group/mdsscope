@@ -66,11 +66,11 @@ See below for a list of programs available.
 
 ### Requirements
 
-The `tup` build system and the `yaggo` argument parsing library are required.
+The `tup` build system is required.
 On Ubuntu, install with:
 
 ``` shell
-sudo apt install tup yaggo build-essential libxxhash-dev
+sudo apt install tup fuse3 build-essential libxxhash-dev pkg-config
 ```
 
 ### Alphabet and K-mer size

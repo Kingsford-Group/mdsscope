@@ -11,15 +11,23 @@
     #error Must define alphabet length ALPHA
 #endif
 
+#include "argparse.hpp"
 #include "mer_op.hpp"
 #include "mds_op.hpp"
 #include "imoves.hpp"
 #include "imove_signature.hpp"
 #include "longest_path.hpp"
-#include "file_queue.hpp"
-#include "misc.hpp"
 
-#include "optimize_rem_path_len.hpp"
+enum ArgsOperation { min, max };
+struct OptimizeRemPathLenArgs : argparse::Args {
+    uint64_t& iteration_arg = kwarg("iteration", "Maximum number of iterations").set_default(1000);
+    double& lambda_arg = kwarg("lambda", "Lower temperature factor").set_default(0.99);
+    ArgsOperation& op_arg = kwarg("op", "Operation to optimize for");
+    bool& progress_flag = flag("p,progress", "Show progress");
+    std::optional<const char*>& mds_arg = kwarg("f,mds", "File with MDS");
+
+    std::vector<const char*>& comp_arg = arg("comp");
+};
 
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
@@ -84,15 +92,15 @@ int main(int argc, char* argv[]) {
     std::mt19937_64 rand_gen((std::random_device())());
     std::uniform_real_distribution<float> rand_unit(0.0, 1.0);
 
-    optimize_rem_path_len args(argc, argv);
+    const auto args = argparse::parse<OptimizeRemPathLenArgs>(argc, argv);
 
     // Comparator for operation
     bool (*comp)(mer_t, mer_t);
     switch(args.op_arg) {
-    case optimize_rem_path_len::op::min:
+    case ArgsOperation::min:
         comp = less;
         break;
-    case optimize_rem_path_len::op::max:
+    case ArgsOperation::max:
         comp = greater;
         break;
     default:
@@ -103,7 +111,7 @@ int main(int argc, char* argv[]) {
     element<mer_ops> current, best;
     std::vector<mer_t> fms;
 
-    const auto start(args.mds_given ? mds_from_file<mer_t>(args.mds_arg) : mds_from_arg<mer_t>(args.comp_arg));
+    const auto start(args.mds_arg ? mds_from_file<mer_t>(*args.mds_arg) : mds_from_arg<mer_t>(args.comp_arg));
     mds_op.from_mds_fms(start, current.bmds, current.fms);
     mds_op.mds2fmoves(start);
     current.fmoves = mds_op.fmoves;

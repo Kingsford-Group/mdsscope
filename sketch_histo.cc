@@ -7,6 +7,7 @@
 #include <random>
 #include <memory>
 
+#include "argparse.hpp"
 #include "misc.hpp"
 // #include "common.hpp"
 #include "permutations.hpp"
@@ -15,7 +16,6 @@
 #include "mykkeltveit.hpp"
 #include "champarnaud.hpp"
 #include "syncmer.hpp"
-#include "sketch_histo.hpp"
 
 #ifndef K
     #error Must define k-mer length K
@@ -26,6 +26,34 @@
 #endif
 
 #include "mer_op.hpp"
+
+struct SketchHistoArgs : argparse::Args {
+	std::optional<const char*>& alphabet_arg = kwarg("a,alphabet", "Alphabet translation");
+	std::optional<const char*>& sketch_file_arg = kwarg("f,sketch-file", "File with sketch mer set");
+	std::optional<const char*>& iseed_arg = kwarg("i,iseed", "Input seed file");
+	std::optional<const char*>& oseed_arg = kwarg("o,ioeed", "Output seed file");
+	bool& mykkeltveit_flag = flag("mykkeltveit", "Stream Mykkeltveit set");
+	std::optional<uint32_t>& syncmer_arg = kwarg("syncmer", "Stream syncmer set");
+	std::optional<uint32_t>& syncmer_s_arg = kwarg("syncmer-s", "Syncmer s parameter (default k/2 - 1)");
+	std::optional<double>& frac_arg = kwarg("frac", "Stream Frac set");
+	bool& champarnaud_flag = flag("champarnaud", "Stream Champarnaud set");
+	bool& straight_flag = flag("s,straight", "Use set directly (default)");
+	bool& canonical_flag = flag("c,canonical", "Use canonical k-mers");
+	bool& union_flag = flag("u,union", "Use union of set and reverse complement set");
+	bool& sum_flag = flag("sum", "Output weighted sum of the histo");
+	uint32_t& hmin_arg = flag("hmin", "Ignore length of histo less than hmin").set_default(0);
+
+
+	std::vector<const char*>& sketch_arg = arg("sketch");
+
+	void welcome() override {
+		std::cout <<
+			"Sketch a sequence given a context free / set scheme\n\n"
+			"Boils down to the intersection of k-mers in the set and in the sequence.\n"
+			"Sequence is read from stdin, set from -f or command line arguments."
+			<< std::endl;
+	}
+};
 
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
@@ -206,13 +234,13 @@ double fill_in_histo(translated_stream& ts, std::vector<size_t>& histo, std::fun
 }
 
 int main(int argc, char* argv[]) {
-	sketch_histo args(argc, argv);
+	const auto args = argparse::parse<SketchHistoArgs>(argc, argv);
 
 	std::vector<std::function<bool(mer_t)>> lookups; // Stack of lookup function. Composed with top of stack
 	lookups.reserve(10);
 
-	auto prg = seeded_prg<std::mt19937_64>(args.oseed_given ? args.oseed_arg : nullptr,
-                                           args.iseed_given ? args.iseed_arg : nullptr);
+	auto prg = seeded_prg<std::mt19937_64>(args.oseed_arg ? *args.oseed_arg : nullptr,
+                                           args.iseed_arg ? *args.iseed_arg : nullptr);
 
 	// Bottom layer
 	std::unique_ptr<std::unordered_set<mer_t>> mer_set;
@@ -223,27 +251,27 @@ int main(int argc, char* argv[]) {
 	std::unique_ptr<frac_data_type> frac_data;
 	std::unique_ptr<champarnaud_data_type> champarnaud_data;
 
-	if(args.sketch_file_given || !args.sketch_arg.empty()) {
+	if(args.sketch_file_arg || !args.sketch_arg.empty()) {
 		mer_set.reset(new std::unordered_set<mer_t>);
-		*mer_set = get_mds<std::unordered_set<mer_t>>(args.sketch_file_arg, args.sketch_arg);
+		*mer_set = get_mds<std::unordered_set<mer_t>>(*args.sketch_file_arg, args.sketch_arg);
 //	std::cout << "mer_set size " << mer_set.size() << ": " << joinT<size_t>(mer_set, ',') << '\n';
 		lookups.emplace_back(std::bind_front(straight_set, mer_set.get())); // Bottom layer is querying the set
 	} else if(args.mykkeltveit_flag) {
 		root_unity.reset(new root_unity_type<mer_ops>);
 		lookups.emplace_back(std::bind_front(mykkeltveit, root_unity.get()));
-	} else if(args.syncmer_given) {
-		const unsigned s = args.syncmer_s_given ? args.syncmer_s_arg : K / 2 - 1;
+	} else if(args.syncmer_arg) {
+		const unsigned s = args.syncmer_s_arg ? *args.syncmer_s_arg : K / 2 - 1;
 		if(std::pow(mer_ops::alpha, s) < 1e9) {
-            std::cerr << "syncmer " << s << ' ' << args.syncmer_arg << std::endl;
-            syncmer_data.reset(new syncmer_data_type(s, args.syncmer_arg, &prg));
+            std::cerr << "syncmer " << s << ' ' << *args.syncmer_arg << std::endl;
+            syncmer_data.reset(new syncmer_data_type(s, *args.syncmer_arg, &prg));
             lookups.emplace_back(std::bind_front(syncmer, syncmer_data.get()));
 		} else {
-            std::cerr << "syncmer large" << s << ' ' << args.syncmer_arg << std::endl;
-			syncmer_large_data.reset(new syncmer_large_data_type(s, args.syncmer_arg, &prg));
+            std::cerr << "syncmer large" << s << ' ' << *args.syncmer_arg << std::endl;
+			syncmer_large_data.reset(new syncmer_large_data_type(s, *args.syncmer_arg, &prg));
 			lookups.emplace_back(std::bind_front(syncmer_large, syncmer_large_data.get()));
 		}
-	} else if(args.frac_given) {
-		frac_data.reset(new frac_data_type(args.frac_arg, prg));
+	} else if(args.frac_arg) {
+		frac_data.reset(new frac_data_type(*args.frac_arg, prg));
 		lookups.emplace_back(std::bind_front(frac, frac_data.get()));
 	} else if(args.champarnaud_flag) {
 		champarnaud_data.reset(new champarnaud_data_type());
@@ -263,7 +291,7 @@ int main(int argc, char* argv[]) {
 
 	const auto& lookup = lookups.back();
 	std::vector<size_t> histo;
-	translated_stream ts(args.alphabet_arg, mer_ops::alpha, std::cin);
+	translated_stream ts(args.alphabet_arg ? *args.alphabet_arg : nullptr, mer_ops::alpha, std::cin);
 
 	while(ts) {
 		// std::cout << "loop" << std::endl;

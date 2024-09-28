@@ -19,7 +19,6 @@ variables:
   CXXFLAGS        Compilation flags
   LDFLAGS         Linker flags
   LDLIBS          Extra libraries flags
-  YAGGO           Path to yaggo
   PKG_CONFIG_PATH Used by pkg-config
 
 Enable testing the -r and -f flags. -r gives the number of repeats for an
@@ -68,10 +67,9 @@ fi
 
 NAME="A${ALPHA}K${K}${SUFFIX}"
 
-[ -z "$YAGGO" ] && YAGGO=$(which yaggo || true)
 [ -z "$TUP" ] && TUP=$(which tup || true)
 
-[[ -z "$TUP" || -z "$YAGGO" ]] && { echo >&2 "Missing required dependencies: tup and/or yaggo"; false; }
+[[ -z "$TUP" ]] && { echo >&2 "Missing required dependencies: tup"; false; }
 
 detect_compiledb() {
   tup compiledb >& /dev/null && echo yes || true
@@ -115,7 +113,6 @@ CONFIG_CXX=$GCXX
 CONFIG_CXXFLAGS=$XXHASH_CFLAGS $OPTFLAGS $CXXFLAGS
 CONFIG_LDFLAGS=$XXHASH_LDFLAGS $LDFLAGS
 CONFIG_LDLIBS=$XXHASH_LDLIBS $LDLIBS
-CONFIG_YAGGO=$YAGGO
 CONFIG_COMPILEDB=$COMPILEDB
 EOF
 

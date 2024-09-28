@@ -1,13 +1,9 @@
 #include <cstdlib>
 #include <vector>
-#include <bitset>
 
-#include "divisor.hpp"
-#include "misc.hpp"
 #include "common.hpp"
-#include "dbg.hpp"
 #include "champarnaud.hpp"
-#include "champarnaud_set.hpp"
+#include "argparse.hpp"
 
 #ifndef K
     #error Must define k-mer length K
@@ -21,6 +17,21 @@
 
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
+
+struct ChamparnaudArgs : argparse::Args {
+	bool& brute_flag = flag("brute", "Brute force");
+	bool& notsorted_flag = flag("notsorted", "Do not sort output");
+
+	void welcome() override {
+		std::cout <<
+			"For each PCR, find the minimal k-mer m, do a principal division:\n"
+			"\n"
+			"m = l^n u, with l a Lyndon word, the smallest one, and |l|<|u|\n"
+			"\n"
+			"Output u l^n for each PCR."
+			<< std::endl;
+	}
+};
 
 template<typename Fn>
 void enumerate_champarnaud(Fn fn) {
@@ -47,7 +58,7 @@ void brute_champarnaud(Fn fn) {
 }
 
 int main(int argc, char* argv[]) {
-	champarnaud_set args(argc, argv);
+	auto args = argparse::parse<ChamparnaudArgs>(argc, argv);
 
     if(args.notsorted_flag) {
         bool first = true;

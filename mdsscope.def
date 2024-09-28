@@ -15,7 +15,7 @@ Stage: devel
 %post
     # System installation
     apt update
-    apt install -y --no-install-recommends tup fuse3 yaggo build-essential libxxhash-dev pkg-config
+    apt install -y --no-install-recommends tup fuse3 build-essential libxxhash-dev pkg-config
 
     # Build mdsscope for each of the parameters in params.
     (

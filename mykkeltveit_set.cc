@@ -1,12 +1,11 @@
 #include <cstdlib>
 #include <cmath>
-#include <complex>
 #include <vector>
 #include <iostream>
 #include <algorithm>
 
+#include "argparse.hpp"
 #include "mykkeltveit.hpp"
-#include "mykkeltveit_set.hpp"
 
 #ifndef K
     #error Must define k-mer length K
@@ -21,6 +20,21 @@
 #include "common.hpp"
 #include "dbg.hpp"
 #include "longest_path.hpp"
+
+struct MykkeltveiSetArgs : argparse::Args {
+    std::optional<uint32_t>& offset_arg = kwarg("o,offset", "Offset in root of unity power").set_default(1);
+    bool& all_flag = flag("a,all", "Output all set (both offsets, all combination of repeat PCR)");
+    bool& range_flag = flag("r,range", "Find range (smallest/largest longest path)");
+    bool& longest_path_flag = flag("l,longest-path", "Compute longest path");
+    bool& brute_flag = flag("brute", "Use brute force to create set");
+
+    void welcome() override {
+        std::cout <<
+            "Create Mykkeltveit\'s set\n\n"
+            "Almost identical to Mykkeltveit, but not quite"
+            << std::endl;
+    }
+};
 
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
@@ -87,12 +101,12 @@ struct repeat {
 };
 
 int main(int argc, char* argv[]) {
-    mykkeltveit_set args(argc, argv);
+    const auto args = argparse::parse<MykkeltveiSetArgs>(argc, argv);
 
     const pcr_info_t pcr_info;
     root_unity_type<mer_ops> root_unity;
 
-    mer_t offset = args.offset_arg;
+    mer_t offset = *args.offset_arg;
     auto mds = !args.brute_flag ? find_mds(pcr_info, offset, root_unity) : brute_force_mds(pcr_info, offset, root_unity);
 
     std::vector<repeat> repeat_pcrs;
@@ -156,7 +170,7 @@ int main(int argc, char* argv[]) {
             mds[r.index] = r.pcr[r.offset];
         }
         if(i < 0) {
-            if(!args.offset_given && args.all_flag && offset == 1) {
+            if(!args.offset_arg && args.all_flag && offset == 1) {
                 offset = mer_ops::k / 2 + 1;
                 mds = find_mds(pcr_info, offset, root_unity);
             } else {

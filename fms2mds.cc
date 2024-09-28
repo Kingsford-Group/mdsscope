@@ -2,18 +2,25 @@
 #include <string>
 #include <vector>
 
+#include "argparse.hpp"
 #include "mer_op.hpp"
 #include "mds_op.hpp"
-#include "fms2mds.hpp"
 #include "misc.hpp"
 #include "common.hpp"
 
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
 
+struct FMS2MDSArgs : argparse::Args {
+
+    void welcome() {
+        std::cout << "Transform list of FMs to an mers in an MDS" << std::endl;
+    }
+};
+
 int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
-    fms2mds args(argc, argv);
+    const auto args = argparse::parse<FMS2MDSArgs>(argc, argv);
     mds_op_type<mer_ops> mds_op;
 
     std::string line;

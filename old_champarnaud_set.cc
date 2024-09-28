@@ -1,11 +1,10 @@
 #include <cstdlib>
 #include <bitset>
 #include <tuple>
-#include <limits>
 #include <algorithm>
 #include <vector>
 
-#include "old_champarnaud_set.hpp"
+#include "argparse.hpp"
 #include "common.hpp"
 #include "dbg.hpp"
 
@@ -17,6 +16,18 @@
 #ifndef ALPHA
     #error Must define alphabet length ALPHA
 #endif
+
+struct OldChamparnaudArgs : argparse::Args {
+
+    void welcome() override {
+        std::cout <<
+            "Generate the Champarnaud decycling set\n\n"
+            "For each PCR, find the minimal k-mer m, do a principal division:\n\n"
+            "m = l^n u, with l a Lyndon word, the smallest one, and |l|<|u|\n\n"
+            "Output u l^n for each PCR."
+            << std::endl;
+    }
+};
 
 #include "mer_op.hpp"
 
@@ -114,7 +125,7 @@ mer_t champarnaud_mer(mer_t m) {
 
 template<typename mer_ops, bool enabled>
 struct amain {
-    int operator()(const old_champarnaud_set& args) {
+    int operator()(const OldChamparnaudArgs& args) {
         std::cerr << "Problem size too big" << std::endl;
 		return EXIT_FAILURE;
     }
@@ -122,7 +133,7 @@ struct amain {
 
 template<typename mer_ops>
 struct amain<mer_ops, true> {
-    int operator()(const old_champarnaud_set& args) {
+    int operator()(const OldChamparnaudArgs& args) {
         std::bitset<mer_ops::nb_mers> done;
         std::vector<mer_t> res;
 
@@ -151,7 +162,7 @@ struct amain<mer_ops, true> {
 
 
 int main(int argc, char* argv[]) {
-    const old_champarnaud_set args(argc, argv);
+    const auto args = argparse::parse<OldChamparnaudArgs>(argc, argv);
 
     return amain<mer_ops, mer_ops::ak_bits <= mer_ops::max_bits>()(args);
 

@@ -1,10 +1,9 @@
+#include "argparse.hpp"
 #include <iostream>
 #include <thread>
 #include <mutex>
 #include <vector>
 #include <atomic>
-
-#include "traverse_comp.hpp"
 
 #ifndef K
     #error Must define k-mer length K
@@ -30,6 +29,21 @@
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
 typedef std::lock_guard<std::mutex> guard_t;
+
+struct TraverseCompArgs : argparse::Args {
+    std::string& comps_arg = kwarg("c,comps", "Output file for component");
+    std::string& dot_arg = kwarg("d,dot", "Output file for the component graph");
+    bool& progress_flag = flag("p,progress", "Display progress");
+    uint32_t& threads_arg = kwarg("t,threads", "Thread target (all)").set_default(0);
+    std::vector<const char*>& comp_arg = arg("component");
+
+    void welcome() {
+        std::cout <<
+            "Traverse the component graph\n"
+            "Start from one MDS, output all the components in the graph."
+            << std::endl;
+    }
+};
 
 void thread_work(comp_queue<mer_ops>& queue, std::mutex& qlock,
                  signatures_type<mer_ops>& signatures, std::mutex& sig_lock,
@@ -121,7 +135,7 @@ void progress_thread(const size_t th_target, std::atomic<size_t>& joined,
 
 int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
-    traverse_comp args(argc, argv);
+    const auto args = argparse::parse<TraverseCompArgs>(argc, argv);
 
     std::ofstream dot_fd(args.dot_arg);
     if(!dot_fd.good()) {
@@ -129,7 +143,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
     dot_fd << "digraph {\n";
-    comp_queue<mer_ops> queue(args.comps_arg);
+    comp_queue<mer_ops> queue(args.comps_arg.c_str());
     signatures_type<mer_ops> signatures;
 
     { // Initialize signature set and queue

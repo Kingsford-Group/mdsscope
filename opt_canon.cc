@@ -7,12 +7,10 @@
 #include <bitset>
 #include <cstdlib>
 #include <csignal>
-#include <atomic>
 #include <functional>
 
-#include "opt_canon.hpp"
+#include "argparse.hpp"
 #include "misc.hpp"
-#include "common.hpp"
 #include "mt_queue.hpp"
 #include "random_seed.hpp"
 #include "simple_thread_pool.hpp"
@@ -28,6 +26,20 @@
 #endif
 
 #include "mer_op.hpp"
+
+struct OptCanonArgs : argparse::Args {
+	std::optional<const char*>& sketch_file_arg = kwarg("f,sketch-file", "File with sketch mer set");
+	bool& can_flag = flag("c,can", "Must be a super set of the canonicalized set");
+	uint32_t& threads_arg = kwarg("t,threads", "Number of threads");
+	std::optional<const char*>& output_arg = kwarg("o,output", "Output optimized set");
+	bool& longest_flag = flag("l,longest", "Compute and print longest path");
+	bool& progress_flag = flag("p,progress", "Show progress");
+	std::optional<const char*>& iseed_arg = kwarg("i,iseed", "Input seed file");
+	std::optional<const char*>& oseed_arg = kwarg("o,ioeed", "Output seed file");
+
+	std::vector<const char*>& sketch_arg = arg("sketch");
+};
+
 typedef amer_type<K, ALPHA> amer_t;
 typedef amer_t::mer_ops mer_ops;
 typedef amer_t::mer_t mer_t;
@@ -211,7 +223,7 @@ void signal_handler(int signal)
 
 template<typename mer_ops, bool enabled>
 struct amain {
-    int operator()(const opt_canon& args) {
+    int operator()(const OptCanonArgs& args) {
         std::cerr << "Problem size too big" << std::endl;
 		return EXIT_FAILURE;
     }
@@ -219,9 +231,9 @@ struct amain {
 
 template<typename mer_ops>
 struct amain<mer_ops, true> {
-    int operator()(const opt_canon& args) {
-		auto prg = seeded_prg<std::mt19937_64>(args.oseed_given ? args.oseed_arg : nullptr,
-											   args.iseed_given ? args.iseed_arg : nullptr);
+    int operator()(const OptCanonArgs& args) {
+		auto prg = seeded_prg<std::mt19937_64>(args.oseed_arg ? *args.oseed_arg : nullptr,
+											   args.iseed_arg ? *args.iseed_arg : nullptr);
 
 		// Install a signal handler so the computation can be stopped at any time
 		std::signal(SIGINT, signal_handler);
@@ -229,7 +241,7 @@ struct amain<mer_ops, true> {
 
 
 
-		auto orig_set = get_mds<std::unordered_set<amer_t>>(args.sketch_file_arg, args.sketch_arg);
+		auto orig_set = get_mds<std::unordered_set<amer_t>>(args.sketch_file_arg ? *args.sketch_file_arg : nullptr, args.sketch_arg);
 		//auto order = get_mds<std::vector<amer_t>>(args.sketch_file_arg, args.sketch_arg);
 		std::vector<amer_t> order(orig_set.cbegin(), orig_set.cend());
 		std::shuffle(order.begin(), order.end(), prg);
@@ -287,8 +299,8 @@ struct amain<mer_ops, true> {
 		if(progress) std::cout << '\n';
 		std::cout << "Removed " << removed << '/' << progress << "\nopt set: " << union_size(order, mer_set) << '\n';
 
-		if(args.output_given) {
-			std::ofstream out(args.output_arg);
+		if(args.output_arg) {
+			std::ofstream out(*args.output_arg);
 			bool first = true;
 			for(mer_t i = 0; i < mer_ops::nb_mers; ++i) {
 				if(!mer_set._data->test(i)) continue;
@@ -325,7 +337,7 @@ struct amain<mer_ops, true> {
 
 
 int main(int argc, char* argv[]) {
-	opt_canon args(argc, argv);
+	const auto args = argparse::parse<OptCanonArgs>(argc, argv);
 
-return amain<mer_ops, mer_ops::ak_bits <= mer_ops::max_bits>()(args);
+	return amain<mer_ops, mer_ops::ak_bits <= mer_ops::max_bits>()(args);
 }

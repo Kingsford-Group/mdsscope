@@ -5,12 +5,26 @@
 #include <memory>
 #include <fstream>
 
+#include "argparse.hpp"
 #include "mer_op.hpp"
 #include "mds_op.hpp"
 #include "longest_path.hpp"
 #include "misc.hpp"
 #include "common.hpp"
-#include "comp2rankdot.hpp"
+
+struct Comp2RankdotArgs : argparse::Args {
+    bool& longest_flag = flag("l,longest", "Annotate with longest remaining path");
+    std::string& output_arg = kwarg("o,output", "Dot file output").set_default("/dev/stdout");
+    bool& progress_flag = flag("p,progress", "Show progress");
+    std::vector<const char*>& mds_arg = arg("MDS");
+
+    void welcome() override {
+        std::cout <<
+            "Generate dot file for 1 component, with rank for proper plotting\n\n"
+            "From 1 MDS, do a BFS and layout each layer with same rank"
+            << std::endl;
+    }
+};
 
 struct mds_info {
     static size_t total; // Total number of MDSs found. Used to set index
@@ -85,7 +99,7 @@ void update_ranges(std::vector<std::pair<mer_t, mer_t>>& fm_ranges, mer_t fmi) {
 
 int main(int argc, char* argv[]) {
     std::ios::sync_with_stdio(false);
-    comp2rankdot args(argc, argv);
+    const auto args = argparse::parse<Comp2RankdotArgs>(argc, argv);
 
     std::vector<tristate_t> first_bmds;
     std::vector<mer_t> first_fms, mds;
@@ -100,7 +114,7 @@ int main(int argc, char* argv[]) {
 
     std::ofstream dot_fd;
 
-    if(strlen(args.output_arg) > 0) {
+    if(args.output_arg.size() > 0) {
         dot_fd.open(args.output_arg);
         if(!dot_fd.good()) {
             std::cerr << "Failed to open dot output file '" << args.output_arg << '\'' << std::endl;

@@ -1,13 +1,12 @@
 #include <iostream>
 #include <random>
 #include <vector>
-#include <stdexcept>
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
 
+#include "argparse.hpp"
 #include "random_seed.hpp"
-#include "syncmer_sketch.hpp"
 #include "divisor.hpp"
 #include "sequence.hpp"
 #include "syncmer.hpp"
@@ -22,12 +21,23 @@
 
 #include "mer_op.hpp"
 
+struct SyncmerSketchArgs : argparse::Args {
+	uint32_t& s_arg = kwarg("s", "s-mer size");
+	uint32_t& t_arg = kwarg("t", "Position of minimum s-mer");
+	std::optional<const char*>& alphabet_arg = kwarg("a,alphabet", "Alphabet translation");
+	bool& canonical_flag = flag("c,canonical", "Canonical space");
+	bool& lex_flag = flag("lex", "Use lexicographic order");
+	std::optional<const char*>& iseed_arg = kwarg("i,iseed", "Input seed file");
+	std::optional<const char*>& oseed_arg = kwarg("o,ioeed", "Output seed file");
+};
+
 typedef mer_op_type<K, ALPHA> mer_ops;
 typedef mer_ops::mer_t mer_t;
 
 
 int main(int argc, char* argv[]) {
-	syncmer_sketch args(argc, argv);
+	const auto args = argparse::parse<SyncmerSketchArgs>(argc, argv);
+
 	if(args.s_arg > mer_ops::k) {
 		std::cerr << "Error: s must be less than k" << std::endl;
 		return EXIT_FAILURE;
@@ -37,8 +47,8 @@ int main(int argc, char* argv[]) {
 	jflib::divisor64 div_s(nb_smers); // Fast division / modulo by nb_smers
 
 	// The properly seeded PRG
-	auto prg = seeded_prg<std::mt19937_64>(args.oseed_given ? args.oseed_arg : nullptr,
-                                           args.iseed_given ? args.iseed_arg : nullptr);
+	auto prg = seeded_prg<std::mt19937_64>(args.oseed_arg ? *args.oseed_arg : nullptr,
+                                           args.iseed_arg ? *args.iseed_arg : nullptr);
 	// Random order of s-mers
 	std::vector<mer_t> smer_order(nb_smers);
 	for(mer_t s = 0; s < nb_smers; ++s)
@@ -49,7 +59,7 @@ int main(int argc, char* argv[]) {
 	char inchar = '0';
 	mer_t mer = 0;
 	size_t offset = 0;
-	translated_stream ts(args.alphabet_arg, mer_ops::k, std::cin);
+	translated_stream ts(*args.alphabet_arg, mer_ops::k, std::cin);
 	// Read first k-1 bases
 	while(offset + 1 < mer_ops::k && ts >> inchar) {
 		mer = mer_ops::nmer(mer, inchar);
