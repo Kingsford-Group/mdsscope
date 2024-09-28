@@ -62,12 +62,42 @@ apptainer run mdsscope.sif /A2K6/mykkeltveit_set
 
 See below for a list of programs available.
 
-## Locally
+## Locally with build script
 
 ### Requirements
 
-The `tup` build system is required.
-On Ubuntu, install with:
+The XXHash library and `g++` >= 12 or `clang++` >= 16 is required.
+
+``` shell
+sudo apt install build-essential libxxhash-dev pkg-config
+```
+
+The alphabet size and k-mer size are compile time constant (not runtime parameters).
+So one needs to compile new executable for every combination of (alphabet, k-mer) they want to use.
+For example, to build for the DNA alphabet and k=6:
+
+``` shell
+./build.sh 4 6
+```
+
+This will create a directory `A4K6` with all the executables in it.
+
+The environmental variables `CXX`, `CXXFLAGS`, `LDFLAGS` and `LDLIBS` are supported to change the compiler frmo the default `g++` or pass extra compiler flags.
+For example:
+
+``` shell
+CXX=g++-12 CXXFLAGS=-g ./build.sh 4 6
+```
+
+
+## Locally with tup
+
+Building with `tup` is the recommended method to make modification to the code and to run the experiments as in the publications.
+
+### Requirements
+
+The `tup` build system, the XXHash library and `g++` >= 12 or `clang++` >= 16 is required.
+On Ubuntu 24.04, install with:
 
 ``` shell
 sudo apt install tup fuse3 build-essential libxxhash-dev pkg-config
