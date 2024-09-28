@@ -62,14 +62,17 @@ apptainer run mdsscope.sif /A2K6/mykkeltveit_set
 
 See below for a list of programs available.
 
-## Locally with build script
+## Locally with `make`
 
 ### Requirements
 
-The XXHash library and `g++` >= 12 or `clang++` >= 16 is required.
+`g++` >= 12 or `clang++` >= 16 is required.
+If the xxHash library is not installed on the system it will be downloaded and installed locally.
+On Ubuntu:
 
 ``` shell
-sudo apt install build-essential libxxhash-dev pkg-config
+sudo apt install build-essential pkg-config
+sudo apt install libxxhash-dev # optional
 ```
 
 The alphabet size and k-mer size are compile time constant (not runtime parameters).
@@ -77,7 +80,7 @@ So one needs to compile new executable for every combination of (alphabet, k-mer
 For example, to build for the DNA alphabet and k=6:
 
 ``` shell
-./build.sh 4 6
+make ALPHA=4 K=6
 ```
 
 This will create a directory `A4K6` with all the executables in it.
@@ -86,9 +89,8 @@ The environmental variables `CXX`, `CXXFLAGS`, `LDFLAGS` and `LDLIBS` are suppor
 For example:
 
 ``` shell
-CXX=g++-12 CXXFLAGS=-g ./build.sh 4 6
+make CXX=g++-12 CXXFLAGS=-g ALPHA=4 K=6
 ```
-
 
 ## Locally with tup
 
