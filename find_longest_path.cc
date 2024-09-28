@@ -19,7 +19,7 @@ typedef longest_path_type<mer_ops> longest_path;
 
 struct LongestPathArgs : argparse::Args {
     std::optional<const char*>& mds_arg = kwarg("f,mds", "File with MDS");
-    std::vector<const char*>& comp_arg = arg("component");
+    std::vector<const char*>& comp_arg = arg("component").set_default("");
 
     void welcome() override {
         std::cout << "Find longest remaining path" << std::endl;

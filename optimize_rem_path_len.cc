@@ -26,7 +26,7 @@ struct OptimizeRemPathLenArgs : argparse::Args {
     bool& progress_flag = flag("p,progress", "Show progress");
     std::optional<const char*>& mds_arg = kwarg("f,mds", "File with MDS");
 
-    std::vector<const char*>& comp_arg = arg("comp");
+    std::vector<const char*>& comp_arg = arg("comp").set_default("");
 };
 
 typedef mer_op_type<K, ALPHA> mer_ops;

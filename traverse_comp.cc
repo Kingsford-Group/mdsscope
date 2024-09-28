@@ -35,7 +35,7 @@ struct TraverseCompArgs : argparse::Args {
     std::string& dot_arg = kwarg("d,dot", "Output file for the component graph");
     bool& progress_flag = flag("p,progress", "Display progress");
     uint32_t& threads_arg = kwarg("t,threads", "Thread target (all)").set_default(0);
-    std::vector<const char*>& comp_arg = arg("component");
+    std::vector<const char*>& comp_arg = arg("component").set_default("");
 
     void welcome() {
         std::cout <<

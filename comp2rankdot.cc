@@ -16,7 +16,7 @@ struct Comp2RankdotArgs : argparse::Args {
     bool& longest_flag = flag("l,longest", "Annotate with longest remaining path");
     std::string& output_arg = kwarg("o,output", "Dot file output").set_default("/dev/stdout");
     bool& progress_flag = flag("p,progress", "Show progress");
-    std::vector<const char*>& mds_arg = arg("MDS");
+    std::vector<const char*>& mds_arg = arg("MDS").set_default("");
 
     void welcome() override {
         std::cout <<

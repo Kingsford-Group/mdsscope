@@ -37,7 +37,7 @@ struct OptCanonArgs : argparse::Args {
 	std::optional<const char*>& iseed_arg = kwarg("i,iseed", "Input seed file");
 	std::optional<const char*>& oseed_arg = kwarg("o,ioeed", "Output seed file");
 
-	std::vector<const char*>& sketch_arg = arg("sketch");
+	std::vector<const char*>& sketch_arg = arg("sketch").set_default("");
 };
 
 typedef amer_type<K, ALPHA> amer_t;
