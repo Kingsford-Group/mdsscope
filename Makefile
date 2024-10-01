@@ -2,16 +2,18 @@
 # MDS Scope
 #
 
+SHELL = bash
 ALPHA ?= 2
 K ?= 4
 
 CPPFLAGS += -Wall
-CXXFLAGS += -O3 -DNDEBUG -std=gnu++20 -DALPHA=$(ALPHA) -DK=$(K)
+CXXFLAGS += -O3 -DNDEBUG -std=gnu++20 -pthread -DALPHA=$(ALPHA) -DK=$(K)
+LDFLAGS += -pthread
 
 BUILDDIR = A${ALPHA}K$(K)
 
 # If libxxhash available on system, use that, otherwise download and install
-LIBXXHASH ?= $(shell pkg-config -exists libxxhash && echo -n "sys" || echo -n "build")
+LIBXXHASH ?= $(shell pkg-config -cflags libxxhash >& /dev/null && echo "sys" || echo "build")
 LIBXXHASH_MK = $(BUILDDIR)/libxxhash_$(LIBXXHASH).mk
 LIBXXHASH_URL = https://github.com/Cyan4973/xxHash/archive/refs/tags/v0.8.2.tar.gz
 
@@ -51,10 +53,7 @@ $(BUILDDIR)/libxxhash_sys.mk: $(BUILDDIR)
 
 $(BUILDDIR)/libxxhash_build.mk: $(BUILDDIR)
 	mkdir -p $</xxHash
-	cd $< && curl -L $(LIBXXHASH_URL) | tar -zx --strip-components=1 -C xxHash && cd xxHash && make && make install PREFIX=$$(pwd)
-	{ echo -n "CXXFLAGS += "; PKG_CONFIG_PATH=$(BUILDDIR)/xxHash/lib/pkgconfig pkg-config -cflags libxxhash; } > $@
-	{ echo -n "LDFLAGS += "; PKG_CONFIG_PATH=$(BUILDDIR)/xxHash/lib/pkgconfig pkg-config --libs-only-L libxxhash; } >> $@
-	{ echo -n "LDFLAGS += "; PKG_CONFIG_PATH=$(BUILDDIR)/xxHash/lib/pkgconfig pkg-config --libs-only-L libxxhash | sed 's/-L/-Wl,-rpath,/g'; } >> $@
-	{ echo -n "LDLIBS += "; PKG_CONFIG_PATH=$(BUILDDIR)/xxHash/lib/pkgconfig pkg-config --libs-only-l libxxhash;  } >> $@
+	curl -L $(LIBXXHASH_URL) | tar -zx --strip-components=1 -C $(BUILDDIR)/xxHash && cd $(BUILDDIR)/xxHash && $(MAKE) && $(MAKE) install PREFIX=$$(pwd)/inst
+	./pkg2make.sh $$(find $(BUILDDIR)/xxHash/inst -iname '*.pc') > $@
 
 include $(LIBXXHASH_MK)
