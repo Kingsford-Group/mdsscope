@@ -19,8 +19,8 @@ typedef mds_op_type<mer_ops> mds_ops;
 typedef connected_components_type<mer_ops> connected_components;
 
 struct ConnectedComponentsArgs : argparse::Args {
+  	bool& print_comps = flag("p,print", "Print the components");
 	std::optional<const char*>& mds_arg = kwarg("f,mds", "File with MDS");
-	bool& print_comps = flag("p,print", "Print the components");
     std::vector<const char*>& comp_arg = arg("component").set_default("");
 
     void welcome() override {

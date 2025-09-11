@@ -20,4 +20,5 @@ PROGS = traverse_comp mdss2dot comp2rankdot
 PROGS += fms2mds optimize_rem_path_len mykkeltveit_set find_longest_path
 PROGS += champarnaud_set sketch_components syncmer_set syncmer_sketch frac_set
 PROGS += create_seed sketch_histo old_champarnaud_set opt_canon find_components
+PROGS += f_rf_combination
 run ./rules.sh $(PROGS)

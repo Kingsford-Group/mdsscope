@@ -47,7 +47,7 @@ struct mds_op_type {
         return true;
     }
 
-    static void from_mds_fms(const std::vector<mer_t>& mds, std::vector<tristate_t>& bmds, std::vector<mer_t>& fms) {
+    static void from_mds_fms(const std::vector<mer_t>& mds, std::vector<tristate_t>& bmds, std::vector<mer_t>& fms, std::vector<mer_t>* rfms = nullptr) {
         bmds.resize(mer_op_t::nb_mers);
         std::fill(bmds.begin(), bmds.end(), no);
         fms.clear();
@@ -57,8 +57,12 @@ struct mds_op_type {
             const auto fm = mer_op_t::fmove(m);
             if(has_fm(bmds, fm))
                 fms.push_back(fm);
+            if(rfms) {
+                const auto rfm = mer_op_t::rfmove(m);
+                if(has_rfm(bmds, rfm))
+                    rfms->push_back(rfm);
+            }
         }
-
     }
 
     static void from_bmds_fms(const std::vector<tristate_t>& bmds, std::vector<mer_t>& fms) {
